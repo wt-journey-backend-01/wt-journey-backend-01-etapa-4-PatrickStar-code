@@ -77,7 +77,7 @@ Envie uma requisição **POST** com os dados do usuário:
 {
   "nome": "João Silva",
   "email": "joao@email.com",
-  "senha": "123456"
+  "senha": "Senha@1233214"
 }
 ```
 
@@ -92,7 +92,7 @@ Envie uma requisição **POST** com as credenciais:
 ```json
 {
   "email": "joao@email.com",
-  "senha": "123456"
+  "senha": "Senha@1233214"
 }
 ```
 

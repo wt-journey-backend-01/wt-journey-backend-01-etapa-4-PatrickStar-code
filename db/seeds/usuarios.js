@@ -11,8 +11,8 @@ exports.seed = async function (knex) {
   await knex("users").del();
 
   // Criptografa senhas
-  const senhaHash1 = await bcrypt.hash("123456", 10);
-  const senhaHash2 = await bcrypt.hash("abcdef", 10);
+  const senhaHash1 = await bcrypt.hash("Senha@1234", 8);
+  const senhaHash2 = await bcrypt.hash("Senha@1233214", 8);
 
   // Insere usuários
   const users = [

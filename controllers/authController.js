@@ -5,15 +5,29 @@ const bycrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const errorHandler = require("../utils/errorHandler");
 
+const senhaRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+
 const UsuarioSchema = z.object({
-  nome: z.string().min(1, "O campo 'name' é obrigatório."),
+  nome: z.string().min(1, "O campo 'nome' é obrigatório."),
   email: z.email(),
-  senha: z.string().min(1, "O campo 'senha' é obrigatório."),
+  senha: z
+    .string()
+    .min(8, "A senha deve ter no mínimo 8 caracteres.")
+    .regex(senhaRegex, {
+      message:
+        "A senha deve conter pelo menos uma letra minúscula, uma maiúscula, um número e um caractere especial.",
+    }),
 });
 
 const LoginSchema = z.object({
   email: z.email(),
-  senha: z.string().min(1, "O campo 'senha' é obrigatório."),
+  senha: z
+    .string()
+    .min(8, "A senha deve ter no mínimo 8 caracteres.")
+    .regex(senhaRegex, {
+      message:
+        "A senha deve conter pelo menos uma letra minúscula, uma maiúscula, um número e um caractere especial.",
+    }),
 });
 
 async function cadastro(req, res, next) {
@@ -77,9 +91,7 @@ async function login(req, res, next) {
       expiresIn: "1d",
     });
 
-    return res
-      .status(200)
-      .json({ message: "Login realizado com sucesso.", acess_token: token });
+    return res.status(200).json({ acess_token: token });
   } catch (error) {
     next(error);
   }
@@ -92,7 +104,7 @@ async function deleteUser(req, res, next) {
     if (!deleted) {
       return res.status(404).json({ message: "Usuario nao encontrado." });
     }
-    return res.status(200).json({ message: "Usuario deletado com sucesso." });
+    return res.status(204).send();
   } catch (error) {}
 }
 
