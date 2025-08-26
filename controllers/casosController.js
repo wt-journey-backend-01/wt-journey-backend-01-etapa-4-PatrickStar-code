@@ -40,7 +40,8 @@ async function getAll(req, res, next) {
   try {
     const parsed = QueryParamsSchema.safeParse(req.query);
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues.message });
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      return res.status(400).json({ messages });
     }
     const { agente_id, status } = parsed.data;
 
@@ -61,7 +62,8 @@ async function search(req, res, next) {
   try {
     const parsed = searchQuerySchema.safeParse(req.query);
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues.message });
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      return res.status(400).json({ messages });
     }
 
     const { q } = parsed.data;
@@ -76,7 +78,8 @@ async function create(req, res, next) {
   try {
     const parsed = CasoSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues.message });
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      return res.status(400).json({ messages });
     }
 
     if (
@@ -129,7 +132,8 @@ async function update(req, res, next) {
     const parsed = CasoSchema.safeParse(req.body);
 
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues.message });
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      return res.status(400).json({ messages });
     }
 
     if ("id" in req.body) {
@@ -183,7 +187,8 @@ async function patch(req, res, next) {
 
     const parsed = CasoPartial.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues.message });
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      return res.status(400).json({ messages });
     }
 
     if ("id" in req.body) {
@@ -193,7 +198,12 @@ async function patch(req, res, next) {
     }
 
     if (parsed.data.agente_id !== undefined) {
-      const agente = await agentesRepository.findById(parsed.data.agente_id);
+      const agenteIdNum = Number(parsed.data.agente_id);
+      if (Number.isNaN(agenteIdNum)) {
+        return res.status(400).json({ message: "agente_id inválido" });
+      }
+
+      const agente = await agentesRepository.findById(agenteIdNum);
       if (!agente) {
         return res.status(404).json({ message: "Agente inexistente" });
       }

@@ -30,7 +30,8 @@ async function findAll(req, res, next) {
   try {
     const parsed = querySchema.safeParse(req.query);
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues.message });
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      return res.status(400).json({ messages });
     }
 
     const { cargo, sort } = parsed.data;
@@ -65,7 +66,8 @@ async function create(req, res, next) {
   try {
     const parsed = AgenteSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues.message });
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      return res.status(400).json({ messages });
     }
 
     const agente = await agentesRepository.create(parsed.data);
@@ -116,7 +118,8 @@ async function updateAgente(req, res, next) {
     }
     const parsed = AgenteSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues.message });
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      return res.status(400).json({ messages });
     }
 
     const agenteUpdated = await agentesRepository.updateAgente(
@@ -152,7 +155,8 @@ async function patch(req, res, next) {
 
     const parsed = AgentePartial.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues.message });
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      return res.status(400).json({ messages });
     }
 
     const agenteUpdated = await agentesRepository.updateAgente(

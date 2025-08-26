@@ -44,7 +44,8 @@ async function cadastro(req, res, next) {
 
     const parsed = UsuarioSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues.message });
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      return res.status(400).json({ messages });
     }
 
     const usuario = await usuariosRepository.findByEmail(email);
@@ -76,7 +77,8 @@ async function login(req, res, next) {
 
     const parsed = LoginSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues.message });
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      return res.status(400).json({ messages });
     }
 
     const usuario = await usuariosRepository.findByEmail(email);
@@ -93,7 +95,7 @@ async function login(req, res, next) {
       expiresIn: "1d",
     });
 
-    return res.status(200).json({ acess_token: token });
+    return res.status(200).json({ access_token: token });
   } catch (error) {
     next(error);
   }
