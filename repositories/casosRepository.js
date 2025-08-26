@@ -11,7 +11,7 @@ async function getAll({ agente_id, status } = {}) {
     }
     return await search;
   } catch (error) {
-    return false;
+    return error;
   }
 }
 async function search(q) {
@@ -32,7 +32,7 @@ async function search(q) {
     return await query;
   } catch (error) {
     console.log(error);
-    return false;
+    return error;
   }
 }
 
@@ -42,7 +42,7 @@ async function create(caso) {
     return created[0];
   } catch (error) {
     console.log(error);
-    return false;
+    return error;
   }
 }
 async function findById(id) {
@@ -54,7 +54,7 @@ async function findById(id) {
     return findIndex[0];
   } catch (error) {
     console.log(error);
-    return false;
+    return error;
   }
 }
 
@@ -69,7 +69,7 @@ async function update(id, fieldsToUpdate) {
     return updated[0];
   } catch (error) {
     console.log(error);
-    return false;
+    return error;
   }
 }
 
@@ -81,7 +81,7 @@ async function deleteCaso(id) {
     return deleted > 0;
   } catch (error) {
     console.log(error);
-    return false;
+    return error;
   }
 }
 
@@ -91,7 +91,7 @@ async function deleteByAgente(id) {
     return deleted > 0;
   } catch (error) {
     console.log(error);
-    return false;
+    return error;
   }
 }
 

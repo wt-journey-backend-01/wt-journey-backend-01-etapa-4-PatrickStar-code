@@ -9,7 +9,7 @@ async function findByEmail(email) {
     return findIndex[0];
   } catch (error) {
     console.log(error);
-    return false;
+    return error;
   }
 }
 
@@ -19,7 +19,7 @@ async function create(user) {
     return created[0];
   } catch (error) {
     console.log(error);
-    return false;
+    return error;
   }
 }
 
@@ -31,7 +31,7 @@ async function deleteUser(id) {
     return deleted > 0;
   } catch (error) {
     console.log(error);
-    return false;
+    return error;
   }
 }
 

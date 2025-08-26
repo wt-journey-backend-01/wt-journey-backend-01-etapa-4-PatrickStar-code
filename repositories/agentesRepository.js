@@ -15,7 +15,7 @@ async function findAll({ cargo, sort } = {}) {
     }
     return await search;
   } catch (error) {
-    return false;
+    return error;
   }
 }
 
@@ -23,11 +23,11 @@ async function findById(id) {
   try {
     const findIndex = await db("agentes").where({ id: Number(id) });
     if (findIndex.length === 0) {
-      return false;
+      return null;
     }
     return findIndex[0];
   } catch (error) {
-    return false;
+    return error;
   }
 }
 
@@ -36,7 +36,7 @@ async function create(agente) {
     const created = await db("agentes").insert(agente).returning("*");
     return created[0];
   } catch (error) {
-    return false;
+    return error;
   }
 }
 
@@ -47,7 +47,7 @@ async function deleteAgente(id) {
     return deleted > 0;
   } catch (error) {
     console.log(error);
-    return false;
+    return error;
   }
 }
 
@@ -67,7 +67,7 @@ async function updateAgente(id, fieldsToUpdate) {
     return updateAgente[0];
   } catch (error) {
     console.log(error);
-    return false;
+    return error;
   }
 }
 

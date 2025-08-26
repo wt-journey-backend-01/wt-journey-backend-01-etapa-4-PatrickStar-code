@@ -9,7 +9,10 @@ const errorHandler = require("../utils/errorHandler");
 const enumStatus = ["aberto", "solucionado"];
 
 const QueryParamsSchema = z.object({
-  agente_id: z.number().optional(),
+  agente_id: z
+    .string()
+    .optional()
+    .transform((val) => (val ? Number(val) : undefined)),
   status: z
     .enum(["aberto", "solucionado"], {
       required_error: "Status é obrigatório.",
@@ -89,7 +92,9 @@ async function create(req, res, next) {
       return res.status(400).json({ message: "agente_id inválido" });
     }
 
-    const agente = await agentesRepository.findById(parsed.data.agente_id);
+    const agente = await agentesRepository.findById(
+      Number(parsed.data.agente_id)
+    );
     if (!agente) {
       return res.status(404).json({ message: "Agente inexistente" });
     }

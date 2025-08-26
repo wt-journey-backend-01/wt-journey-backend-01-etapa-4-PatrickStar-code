@@ -16,9 +16,12 @@ const AgenteSchema = z.object({
       const now = new Date();
       return date <= now;
     }, "A data de incorporação não pode ser no futuro."),
-  cargo: z.string().min(1, "O campo 'cargo' não pode ser vazio."),
+  cargo: z.enum(["inspetor", "delegado", "agente"], {
+    errorMap: () => ({
+      message: "Cargo inválido. Deve ser 'inspetor', 'delegado' ou 'agente'.",
+    }),
+  }),
 });
-
 const AgentePartial = AgenteSchema.partial().strict();
 
 const querySchema = z.object({
