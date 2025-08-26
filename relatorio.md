@@ -1,152 +1,50 @@
 <sup>Esse é um feedback gerado por IA, ele pode conter erros.</sup>
 
-Você tem 6 créditos restantes para usar o sistema de feedback AI.
+Você tem 5 créditos restantes para usar o sistema de feedback AI.
 
 # Feedback para PatrickStar-code:
 
 Nota final: **50.5/100**
 
-# Feedback do seu desafio - PatrickStar-code 🚀
+# Feedback para PatrickStar-code 🚀
 
-Olá, Patrick! Que jornada incrível você está trilhando no desafio da API REST com Node.js, Express e PostgreSQL! 🎉 Antes de mais nada, parabéns por ter implementado a parte de **autenticação** e **segurança** com JWT e bcrypt, e por ter estruturado seu projeto com uma arquitetura clara e modular. Isso é essencial para projetos profissionais e escaláveis! 👏
-
----
-
-## 🎯 O que você já mandou muito bem
-
-- **Autenticação JWT funcionando:** Você implementou o login, registro, logout e exclusão de usuários com tratamento adequado e mensagens claras.
-- **Middleware de autenticação:** Está corretamente verificando o token e protegendo rotas de agentes e casos.
-- **Validação com Zod:** Excelente uso para validar os dados de entrada, garantindo segurança e robustez.
-- **Migrations e seeds:** A tabela de usuários foi criada via migration, e você tem seeds para agentes e casos.
-- **Documentação:** O INSTRUCTIONS.md está bem detalhado e ajuda a entender o fluxo esperado.
-- **Testes bônus que passaram:** Você implementou endpoints de filtragem, busca por palavras-chave, e o endpoint `/usuarios/me` para retornar dados do usuário autenticado. Isso mostra que foi além do básico, parabéns! 🌟
+Olá, Patrick! Primeiro, parabéns pelo seu esforço e por ter avançado bastante na implementação da sua API segura com Node.js, Express e PostgreSQL! 🎉 Você conseguiu fazer funcionar bem a parte de usuários, com cadastro, login, logout e deleção, além de proteger as rotas com JWT, o que é essencial para uma aplicação real. Isso já é uma grande conquista! 👏
 
 ---
 
-## 🚨 Testes que falharam e o que pode estar acontecendo
+## 🎯 Conquistas Bônus que você alcançou
 
-Você teve muitas falhas nos testes base, principalmente relacionados a **agentes** e **casos**, que são recursos protegidos e essenciais da API. Vou destrinchar os principais grupos de testes que falharam e o que pode estar causando esses problemas.
+- Criação, login e logout de usuários funcionando corretamente com validação e hash de senha.
+- Implementação do middleware de autenticação JWT, que protege as rotas de agentes e casos.
+- Rotas protegidas retornando status 401 quando o token não é enviado ou é inválido.
+- Mensagens de erro claras e uso do Zod para validação de dados.
+- Documentação no INSTRUCTIONS.md explicando o fluxo de autenticação e uso do token.
+- Uso correto do bcrypt para hash de senha e jwt para criação do token com expiração.
+- Implementação do endpoint de deleção de usuários.
+- Organização do código em controllers, repositories, rotas e middlewares, seguindo o padrão MVC.
+- Implementação dos seeds e migrations para as tabelas agentes, casos e usuários.
+
+Você está no caminho certo para uma API robusta e segura! 🌟
 
 ---
 
-### 1. **AGENTS: Criação, listagem, busca, atualização e deleção de agentes falharam**
+## 🚩 Onde seu código precisa de atenção (Análise dos testes que falharam)
 
-**Problema:** Todos os testes que envolvem agentes falharam, incluindo criação (`POST`), listagem (`GET`), busca por ID, atualização (PUT e PATCH) e deleção.
+### 1. Testes relacionados a agentes (AGENTS) falharam em vários pontos:
 
-**Análise de causa raiz:**
+- Criação, listagem, busca por ID, atualização (PUT e PATCH), deleção e erros 400/404.
+- Também recebeu 401 ao tentar acessar sem token (isso passou, ou seja, o middleware está funcionando).
 
-- Você aplicou o middleware de autenticação em todas as rotas de agentes, o que é correto.
-- Porém, os testes indicam que o status code esperado não está sendo retornado corretamente, ou os dados estão diferentes do esperado.
-- Ao analisar o controller e repository, o código parece correto, mas tem um detalhe importante no repository:
+**Análise da causa raiz:**
+
+O problema principal está no seu arquivo `repositories/agentesRepository.js`, especificamente na função `deleteAgente`:
 
 ```js
-async function findById(id) {
+async function deleteAgente(id) {
   try {
-    const findIndex = await db("agentes").where({ id: Number(id) });
-    if (findIndex.length === 0) {
-      return false;
-    }
-    return findIndex[0];
-  } catch (error) {
-    console.log(error);
-    return error;
-  }
-}
-```
-
-Aqui, você retorna `false` se não encontrar o agente, mas no controller você verifica `if (!agente)` para retornar 404. Isso é correto. Então, essa parte está ok.
-
-- Agora, no método `findAll` do repository:
-
-```js
-async function findAll({ cargo, sort } = {}) {
-  try {
-    const search = db.select("*").from("agentes");
-    if (cargo) {
-      search.where({ cargo: cargo });
-    }
-    if (sort) {
-      if (sort === "dataDeIncorporacao") {
-        search.orderBy("dataDeIncorporacao", "asc");
-      } else if (sort === "-dataDeIncorporacao") {
-        search.orderBy("dataDeIncorporacao", "desc");
-      }
-    }
-
-    return await search;
-  } catch (error) {
-    console.log(error);
-    return error;
-  }
-}
-```
-
-Aqui está um problema sutil: `search` é uma query builder, mas você está tentando usar `search.where()` e `search.orderBy()` diretamente, o que é correto, porém o Knex query builder é imutável e retorna uma nova query a cada chamada. Você deveria fazer:
-
-```js
-let search = db.select("*").from("agentes");
-if (cargo) {
-  search = search.where({ cargo });
-}
-if (sort) {
-  if (sort === "dataDeIncorporacao") {
-    search = search.orderBy("dataDeIncorporacao", "asc");
-  } else if (sort === "-dataDeIncorporacao") {
-    search = search.orderBy("dataDeIncorporacao", "desc");
-  }
-}
-return await search;
-```
-
-No seu código, você está chamando `search.where()` mas não está atualizando a variável `search`, então o filtro não é aplicado. Isso pode fazer com que a consulta retorne resultados errados ou não filtre corretamente, causando falha nos testes.
-
-- Também notei que no controller `deleteAgente` você chama:
-
-```js
-const inCase = await casosRepository.deleteByAgente(id);
-```
-
-Passando `id` que é uma string, mas no repository você faz:
-
-```js
-const deleted = await db("casos").where({ agente_id: id }).del();
-```
-
-Se o `id` não for convertido para número, pode causar problemas. Recomendo converter para número antes:
-
-```js
-const agenteIdNum = Number(id);
-const deleted = await db("casos").where({ agente_id: agenteIdNum }).del();
-```
-
-Além disso, no controller você não trata o caso de erro na deleção dos casos do agente, só imprime no console.
-
-- Outro ponto importante no controller de agentes é que você tem duas checagens de retorno `if (!agenteUpdated)` e `if (agenteUpdated === null)`, que são redundantes. Isso não deve causar falha, mas pode ser simplificado.
-
----
-
-### 2. **CASES: Criação, listagem, busca, atualização e deleção de casos falharam**
-
-**Problema:** Testes que envolvem casos também falharam em diversas operações.
-
-**Análise de causa raiz:**
-
-- No controller, ao buscar caso por ID:
-
-```js
-const caso = await casosRepository.findById(id);
-```
-
-No repository:
-
-```js
-async function findById(id) {
-  try {
-    const findIndex = await db("casos").where({ id: Number(id) });
-    if (findIndex.length === 0) {
-      return false;
-    }
-    return findIndex[0];
+    const agenteIdNum = Number(id);
+    const deleted = await db("casos").where({ agente_id: agenteIdNum }).del();
+    return deleted > 0;
   } catch (error) {
     console.log(error);
     return false;
@@ -154,19 +52,61 @@ async function findById(id) {
 }
 ```
 
-Aqui está correto, mas note que no controller você converte `id` para número para validar, porém passa o `id` original para o repository. Isso pode funcionar, mas para evitar inconsistências, passe o número:
+Aqui, você está deletando **os casos relacionados ao agente**, e retornando se algum caso foi deletado, mas isso não é o que o nome da função sugere. O que o teste espera é que essa função delete o agente da tabela `agentes`.
+
+Ou seja, o agente em si nunca está sendo deletado do banco, apenas os casos relacionados.
+
+Por isso, ao tentar deletar um agente, o teste não encontra o agente deletado (status 204), e falha.
+
+**Solução sugerida:**
+
+Separe a função que deleta casos do agente da função que deleta o agente. A função `deleteAgente` deve deletar o agente da tabela `agentes`. Algo assim:
 
 ```js
-const idNum = Number(id);
-const caso = await casosRepository.findById(idNum);
+async function deleteAgente(id) {
+  try {
+    const agenteIdNum = Number(id);
+    const deleted = await db("agentes").where({ id: agenteIdNum }).del();
+    return deleted > 0;
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
+}
 ```
 
-- No método `getAll` do repository:
+E a exclusão dos casos relacionados deve ser feita antes, numa função separada (que você já tem: `deleteByAgente` em `casosRepository.js`).
+
+No seu `controllers/agentesController.js`, você chama:
+
+```js
+const inCase = await casosRepository.deleteByAgente(idNum);
+if (!inCase) {
+  console.log("Agente não tem casos");
+}
+const deleted = await agentesRepository.deleteAgente(idNum);
+if (!deleted) {
+  return res.status(404).json({ message: "Agente inexistente" });
+}
+return res.status(204).send();
+```
+
+Esse fluxo está correto, mas a função `deleteAgente` do repository está deletando os casos, não o agente! Por isso, o agente nunca é removido.
+
+---
+
+### 2. Testes relacionados a casos (CASES) falharam em vários pontos:
+
+- Criação, listagem, busca por ID, atualização (PUT e PATCH), deleção e erros 400/404.
+
+**Análise da causa raiz:**
+
+No arquivo `repositories/casosRepository.js`, na função `getAll`:
 
 ```js
 async function getAll({ agente_id, status } = {}) {
   try {
-    const search = db.select("*").from("casos");
+    let search = db.select("*").from("casos");
     if (agente_id !== undefined) {
       search.where({ agente_id: agente_id });
     }
@@ -184,33 +124,71 @@ async function getAll({ agente_id, status } = {}) {
 }
 ```
 
-Aqui ocorre o mesmo problema do `findAll` de agentes: você está chamando `search.where()` mas não está atualizando a variável `search`. O correto é:
+Aqui, você está usando `.where()` mas não está reatribuindo a variável `search`. O Knex não modifica a query builder in-place; ele retorna uma nova query. Isso significa que as condições `.where()` não estão sendo aplicadas.
+
+O correto é:
 
 ```js
-let search = db.select("*").from("casos");
 if (agente_id !== undefined) {
-  search = search.where({ agente_id });
+  search = search.where({ agente_id: agente_id });
 }
 if (status) {
-  search = search.where({ status });
+  search = search.where({ status: status });
 }
-return await search;
 ```
 
-Sem isso, os filtros não são aplicados e o resultado pode ser incorreto.
+Sem essa correção, o filtro não funciona, e os testes que verificam filtragem e listagem falham.
 
-- No método `update` do repository:
+---
+
+### 3. Testes bônus que falharam (ex: filtragem por status, busca de agente responsável, endpoint /usuarios/me)
+
+Você implementou vários endpoints e funcionalidades, mas esses testes extras falharam. Isso indica que esses endpoints provavelmente não foram implementados ou estão incompletos.
+
+---
+
+### 4. Organização e estrutura de diretórios
+
+Sua estrutura está quase correta, mas notei que você tem o arquivo `userRoutes.js` (plural 'users') em `routes/`, mas no requisito esperado ele deve ser `authRoutes.js` para autenticação e `usuariosRepository.js` (plural 'usuarios') no repositório.
+
+No seu `server.js`:
 
 ```js
-async function update(id, fieldsToUpdate) {
+const userRoutes = require("./routes/userRoutes");
+...
+app.use("/users", userRoutes);
+```
+
+Mas pelo requisito, o endpoint de deleção de usuários é `/users/:id` e as rotas de autenticação ficam em `/auth`.
+
+Se o arquivo `userRoutes.js` não está implementado corretamente, isso pode causar problemas.
+
+---
+
+## 📌 Resumo dos principais pontos para você focar:
+
+- **Corrigir a função `deleteAgente` no `agentesRepository.js` para deletar o agente da tabela `agentes`, não os casos.**  
+  Isso vai destravar a deleção correta de agentes.
+
+- **Corrigir os encadeamentos `.where()` no `casosRepository.js` para reatribuir a query builder.**  
+  Isso vai fazer com que os filtros por `agente_id` e `status` funcionem.
+
+- **Verificar e implementar os endpoints opcionais (bônus), como `/usuarios/me`, e os filtros que falharam nos testes bônus.**
+
+- **Revisar a estrutura de rotas e arquivos para garantir que estão conforme o esperado, especialmente o `userRoutes.js` e `authRoutes.js`.**
+
+---
+
+## Exemplos de correção para os pontos críticos
+
+### deleteAgente corrigido (em `repositories/agentesRepository.js`)
+
+```js
+async function deleteAgente(id) {
   try {
-    const updated = await db("casos")
-      .where({ id: Number(id) })
-      .update(fieldsToUpdate, ["*"]);
-    if (!updated || updated.length === 0) {
-      return false;
-    }
-    return updated[0];
+    const agenteIdNum = Number(id);
+    const deleted = await db("agentes").where({ id: agenteIdNum }).del();
+    return deleted > 0;
   } catch (error) {
     console.log(error);
     return false;
@@ -218,142 +196,72 @@ async function update(id, fieldsToUpdate) {
 }
 ```
 
-O método `update` do Knex retorna um array com os registros atualizados, então essa parte está correta. Mas certifique-se que `fieldsToUpdate` não contenha o campo `id`, pois isso pode causar erro.
-
-- No controller, você faz validação para não permitir alterar `id`, o que está correto.
-
-- No método `deleteCaso` no repository e controller, está tudo correto, mas sempre garanta que o `id` seja um número.
-
----
-
-### 3. **Tokens JWT e autenticação funcionam, mas falta validar o header Authorization com Bearer**
-
-Você já protegeu as rotas com o middleware que verifica o token JWT, e os testes de autenticação passaram, parabéns! 🎉
-
----
-
-### 4. **Estrutura de Diretórios**
-
-Sua estrutura está muito próxima do esperado e está bem organizada! A única observação é que na pasta `routes` o arquivo `authRoutes.js` está correto, mas no `server.js` você tem:
+### Ajuste no getAll para casos (em `repositories/casosRepository.js`)
 
 ```js
-app.use(authRoutes);
-```
-
-Sem prefixo de rota. Para maior clareza e organização, recomendo usar:
-
-```js
-app.use("/auth", authRoutes);
-```
-
-Assim todas as rotas de autenticação ficam agrupadas sob `/auth`, por exemplo `/auth/register`, `/auth/login`, etc.
-
----
-
-## 💡 Recomendações para você avançar e corrigir os erros
-
-1. **Atualize os métodos `findAll` e `getAll` dos repositories para usar a variável `search` atualizada:**
-
-```js
-// Exemplo em agentesRepository.js
-async function findAll({ cargo, sort } = {}) {
+async function getAll({ agente_id, status } = {}) {
   try {
-    let search = db.select("*").from("agentes");
-    if (cargo) {
-      search = search.where({ cargo });
+    let search = db.select("*").from("casos");
+    if (agente_id !== undefined) {
+      search = search.where({ agente_id: agente_id });
     }
-    if (sort) {
-      if (sort === "dataDeIncorporacao") {
-        search = search.orderBy("dataDeIncorporacao", "asc");
-      } else if (sort === "-dataDeIncorporacao") {
-        search = search.orderBy("dataDeIncorporacao", "desc");
-      }
+    if (status) {
+      search = search.where({ status: status });
     }
     return await search;
   } catch (error) {
     console.log(error);
-    return error;
+    return false;
   }
 }
 ```
 
-O mesmo ajuste para `casosRepository.js` no método `getAll`.
-
 ---
 
-2. **Converta IDs para números antes de usá-los em queries:**
+## Recursos recomendados para você aprofundar e corrigir esses pontos
 
-No `deleteByAgente` e em outras funções que usam IDs, faça:
-
-```js
-const agenteIdNum = Number(id);
-const deleted = await db("casos").where({ agente_id: agenteIdNum }).del();
-```
-
-Isso evita erros de tipo e garante que o Knex faça a query correta.
-
----
-
-3. **Ajuste o `server.js` para usar prefixo nas rotas de autenticação:**
-
-```js
-app.use("/auth", authRoutes);
-```
-
-Assim, evita confusões e melhora a organização.
-
----
-
-4. **Simplifique os retornos duplicados no controller:**
-
-No `updateAgente` e `patch`, remova checagens redundantes como:
-
-```js
-if (!agenteUpdated) {
-  return res.status(404).json({ message: "Agente inexistente" });
-}
-
-if (agenteUpdated === null) {
-  return res.status(404).json({ message: "Agente não atualizado/não encontrado" });
-}
-```
-
-Basta uma delas, já que `false` ou `null` indicam falha.
-
----
-
-5. **Recomendo fortemente os seguintes vídeos para aprofundar:**
-
-- Sobre uso correto do Knex Query Builder e construção de queries:  
+- Para entender melhor o uso do Knex e query builder, veja este vídeo detalhado:  
   https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s
 
-- Para entender melhor autenticação JWT e bcrypt:  
-  https://www.youtube.com/watch?v=L04Ln97AwoY
+- Para fortalecer seu conhecimento sobre autenticação JWT e boas práticas com bcrypt, recomendo este vídeo, feito pelos meus criadores, que explica muito bem os conceitos básicos de cibersegurança:  
+  https://www.youtube.com/watch?v=Q4LQOfYwujk
 
-- Para estruturar seu projeto com boas práticas MVC em Node.js:  
+- Para entender como organizar seu projeto em MVC e manter o código limpo e escalável:  
   https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s
 
----
-
-## 📋 Resumo rápido dos principais pontos para focar
-
-- [ ] Corrigir os métodos `findAll` e `getAll` para atualizar a query builder corretamente (usar `search = search.where(...)`).
-- [ ] Garantir que IDs usados em queries estejam convertidos para números.
-- [ ] Ajustar o uso do prefixo `/auth` nas rotas do servidor.
-- [ ] Simplificar checagens redundantes nos controllers.
-- [ ] Revisar o tratamento de erros para garantir que mensagens e status codes estejam conforme esperado.
-- [ ] Revisar o uso do middleware de autenticação para garantir que todas as rotas protegidas estejam corretas.
-- [ ] Testar localmente cada endpoint após as correções para garantir que os testes base passem.
+- Se precisar revisar a configuração do banco com Docker e Knex, este vídeo é excelente:  
+  https://www.youtube.com/watch?v=uEABDBQV-Ek&t=1s
 
 ---
 
-Patrick, você está no caminho certo e com uma base muito boa! 💪 Corrigindo esses detalhes de query builder e tipos, sua API vai ficar tinindo e passar nos testes base com louvor. Continue firme, revisando o fluxo das requisições e validando os dados com atenção — isso faz toda a diferença na robustez da aplicação.
+## Considerações finais e incentivo 💪
 
-Se precisar, volte aos vídeos que recomendei para fortalecer fundamentos e boas práticas. Você tem tudo para entregar um projeto profissional e seguro! 🚀
+Patrick, seu trabalho está muito bom e você já tem uma base sólida para uma API segura e funcional! Os erros que apareceram são comuns e fáceis de corrigir com atenção aos detalhes nas funções que manipulam o banco de dados.
 
-Conte comigo para o que precisar, e bora codar! 💙
+Lembre-se que a clareza no que cada função deve fazer (ex: deletar agente vs deletar casos) é fundamental para evitar confusões e bugs. Também, sempre teste suas queries para garantir que os filtros estão sendo aplicados corretamente.
 
-Um abraço virtual do seu Code Buddy! 🤖✨
+Continue focando na qualidade do código e nas boas práticas. Corrigindo esses pontos, você vai destravar todos os testes obrigatórios e poderá avançar para os bônus com confiança.
+
+Conte comigo para o que precisar! 🚀
+
+---
+
+# 📋 Resumo rápido para focar:
+
+- [ ] Corrigir `deleteAgente` para deletar o agente, não os casos.
+- [ ] Corrigir encadeamento das queries `.where()` no `casosRepository.js`.
+- [ ] Revisar e implementar corretamente as rotas de usuários (`userRoutes.js` / `authRoutes.js`).
+- [ ] Implementar endpoints bônus, como `/usuarios/me`.
+- [ ] Testar localmente cada endpoint para garantir status codes e respostas corretas.
+- [ ] Manter a estrutura de pastas conforme o requisito para facilitar manutenção e testes.
+
+---
+
+Patrick, parabéns novamente pelo seu esforço! Continue assim, você está no caminho certo para se tornar um(a) desenvolvedor(a) backend incrível! 🚀🔥
+
+Qualquer dúvida, me chama aqui que vamos destrinchar juntos! 😉
+
+Abraços e sucesso! 👊✨
 
 > Caso queira tirar uma dúvida específica, entre em contato com o Chapter no nosso [discord](https://discord.gg/DryuHVnz).
 
