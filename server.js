@@ -3,7 +3,6 @@ const app = express();
 const agentesRouter = require("./routes/agentesRoutes");
 const casosRouter = require("./routes/casosRoutes");
 const authRoutes = require("./routes/authRoutes");
-const userRoutes = require("./routes/userRoutes");
 const PORT = 3000;
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./docs/swagger");
