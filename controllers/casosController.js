@@ -79,6 +79,13 @@ async function create(req, res, next) {
       return res.status(400).json({ message: parsed.error.issues[0].message });
     }
 
+    if (
+      !Number.isInteger(parsed.data.agente_id) ||
+      parsed.data.agente_id <= 0
+    ) {
+      return res.status(400).json({ message: "agente_id inválido" });
+    }
+
     const agente = await agentesRepository.findById(parsed.data.agente_id);
     if (!agente) {
       return res.status(404).json({ message: "Agente inexistente" });
@@ -97,6 +104,10 @@ async function create(req, res, next) {
 async function getById(req, res, next) {
   try {
     const id = req.params.id;
+    const idNum = Number(req.params.id);
+    if (Number.isNaN(idNum)) {
+      return res.status(400).json({ message: "ID inválido" });
+    }
 
     const caso = await casosRepository.findById(id);
     if (!caso) {
@@ -111,6 +122,10 @@ async function getById(req, res, next) {
 async function update(req, res, next) {
   try {
     const { id } = req.params;
+    const idNum = Number(req.params.id);
+    if (Number.isNaN(idNum)) {
+      return res.status(400).json({ message: "ID inválido" });
+    }
     const parsed = CasoSchema.safeParse(req.body);
 
     if (!parsed.success) {
@@ -144,6 +159,10 @@ async function update(req, res, next) {
 async function deleteCaso(req, res, next) {
   try {
     const { id } = req.params;
+    const idNum = Number(req.params.id);
+    if (Number.isNaN(idNum)) {
+      return res.status(400).json({ message: "ID inválido" });
+    }
     const casosDeleted = await casosRepository.deleteCaso(id);
     if (!casosDeleted) {
       return res.status(404).json({ message: "Caso inexistente" });
@@ -157,6 +176,10 @@ async function deleteCaso(req, res, next) {
 async function patch(req, res, next) {
   try {
     const { id } = req.params;
+    const idNum = Number(req.params.id);
+    if (Number.isNaN(idNum)) {
+      return res.status(400).json({ message: "ID inválido" });
+    }
 
     const parsed = CasoPartial.safeParse(req.body);
     if (!parsed.success) {

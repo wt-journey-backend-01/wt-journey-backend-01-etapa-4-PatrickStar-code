@@ -36,10 +36,10 @@ async function cadastro(req, res, next) {
   try {
     const { email, senha, nome } = req.body;
 
-    if ((!email || !senha, !nome)) {
+    if (!email || !senha || !nome) {
       return res
         .status(400)
-        .json({ message: "Email,Senha e nome obrigatorio." });
+        .json({ message: "Email, Senha e nome obrigatórios." });
     }
 
     const parsed = UsuarioSchema.safeParse(req.body);
@@ -49,10 +49,10 @@ async function cadastro(req, res, next) {
 
     const usuario = await usuariosRepository.findByEmail(email);
     if (usuario) {
-      return res.status(400).json({ message: "Email ja cadastrado." });
+      return res.status(400).json({ message: "Email já cadastrado." });
     }
 
-    const senhaHash = await bycrypt.hash(senha, 8);
+    const senhaHash = await bcrypt.hash(senha, 8);
 
     const newUsuario = await usuariosRepository.create({
       nome,
@@ -84,7 +84,7 @@ async function login(req, res, next) {
       return res.status(400).json({ message: "Usuario nao encontrado." });
     }
 
-    const senhaMatch = await bycrypt.compare(senha, usuario.senha);
+    const senhaMatch = await bcrypt.compare(senha, usuario.senha);
     if (!senhaMatch) {
       return res.status(401).json({ message: "Senha incorreta." });
     }

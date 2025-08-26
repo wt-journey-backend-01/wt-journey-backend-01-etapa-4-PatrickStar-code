@@ -81,6 +81,10 @@ async function create(req, res, next) {
 async function deleteAgente(req, res, next) {
   try {
     const { id } = req.params;
+    const idNum = Number(req.params.id);
+    if (Number.isNaN(idNum)) {
+      return res.status(400).json({ message: "ID inválido" });
+    }
 
     const inCase = await casosRepository.deleteByAgente(id);
     if (!inCase) {
@@ -100,6 +104,10 @@ async function deleteAgente(req, res, next) {
 async function updateAgente(req, res, next) {
   try {
     const { id } = req.params;
+    const idNum = Number(req.params.id);
+    if (Number.isNaN(idNum)) {
+      return res.status(400).json({ message: "ID inválido" });
+    }
 
     if ("id" in req.body) {
       return res
@@ -131,6 +139,10 @@ async function updateAgente(req, res, next) {
 async function patch(req, res, next) {
   try {
     const { id } = req.params;
+    const idNum = Number(req.params.id);
+    if (Number.isNaN(idNum)) {
+      return res.status(400).json({ message: "ID inválido" });
+    }
 
     if ("id" in req.body) {
       return res
