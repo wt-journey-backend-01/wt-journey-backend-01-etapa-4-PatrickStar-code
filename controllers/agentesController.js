@@ -86,11 +86,11 @@ async function deleteAgente(req, res, next) {
       return res.status(400).json({ message: "ID inválido" });
     }
 
-    const inCase = await casosRepository.deleteByAgente(id);
+    const inCase = await casosRepository.deleteByAgente(idNum);
     if (!inCase) {
       console.log("Agente não tem casos");
     }
-    const deleted = await agentesRepository.deleteAgente(id);
+    const deleted = await agentesRepository.deleteAgente(idNum);
     if (!deleted) {
       return res.status(404).json({ message: "Agente inexistente" });
     }
@@ -120,9 +120,6 @@ async function updateAgente(req, res, next) {
     }
 
     const agenteUpdated = await agentesRepository.updateAgente(id, parsed.data);
-    if (!agenteUpdated) {
-      return res.status(404).json({ message: "Agente inexistente" });
-    }
 
     if (agenteUpdated === null) {
       return res
@@ -155,10 +152,11 @@ async function patch(req, res, next) {
       return res.status(400).json({ message: parsed.error.issues[0].message });
     }
 
-    const agenteUpdated = await agentesRepository.updateAgente(id, parsed.data);
-    if (!agenteUpdated) {
-      return res.status(404).json({ message: "Agente inexistente" });
-    }
+    const agenteUpdated = await agentesRepository.updateAgente(
+      idNum,
+      parsed.data
+    );
+
     if (agenteUpdated === null) {
       return res
         .status(404)

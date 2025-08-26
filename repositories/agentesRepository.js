@@ -2,18 +2,17 @@ const db = require("../db/db");
 
 async function findAll({ cargo, sort } = {}) {
   try {
-    const search = db.select("*").from("agentes");
+    let search = db.select("*").from("agentes");
     if (cargo) {
-      search.where({ cargo: cargo });
+      search = search.where({ cargo });
     }
     if (sort) {
       if (sort === "dataDeIncorporacao") {
-        search.orderBy("dataDeIncorporacao", "asc");
+        search = search.orderBy("dataDeIncorporacao", "asc");
       } else if (sort === "-dataDeIncorporacao") {
-        search.orderBy("dataDeIncorporacao", "desc");
+        search = search.orderBy("dataDeIncorporacao", "desc");
       }
     }
-
     return await search;
   } catch (error) {
     console.log(error);
@@ -46,9 +45,8 @@ async function create(agente) {
 
 async function deleteAgente(id) {
   try {
-    const deleted = await db("agentes")
-      .where({ id: Number(id) })
-      .del();
+    const agenteIdNum = Number(id);
+    const deleted = await db("casos").where({ agente_id: agenteIdNum }).del();
     return deleted > 0;
   } catch (error) {
     console.log(error);

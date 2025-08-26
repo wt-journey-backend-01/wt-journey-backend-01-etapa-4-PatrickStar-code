@@ -3,6 +3,7 @@ const app = express();
 const agentesRouter = require("./routes/agentesRoutes");
 const casosRouter = require("./routes/casosRoutes");
 const authRoutes = require("./routes/authRoutes");
+const userRoutes = require("./routes/userRoutes");
 const PORT = 3000;
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./docs/swagger");
@@ -12,7 +13,8 @@ app.use(express.json());
 
 app.use("/agentes", agentesRouter);
 app.use("/casos", casosRouter);
-app.use(authRoutes);
+app.use("/auth", authRoutes);
+app.use("/users", userRoutes);
 
 setupSwagger(app);
 app.listen(PORT, () => {

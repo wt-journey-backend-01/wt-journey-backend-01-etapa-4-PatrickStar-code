@@ -2,7 +2,7 @@ const db = require("../db/db");
 
 async function getAll({ agente_id, status } = {}) {
   try {
-    const search = db.select("*").from("casos");
+    let search = db.select("*").from("casos");
     if (agente_id !== undefined) {
       search.where({ agente_id: agente_id });
     }
