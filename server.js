@@ -14,7 +14,6 @@ app.use(express.json());
 app.use("/agentes", agentesRouter);
 app.use("/casos", casosRouter);
 app.use("/auth", authRoutes);
-app.use("/users", userRoutes);
 
 setupSwagger(app);
 app.listen(PORT, () => {

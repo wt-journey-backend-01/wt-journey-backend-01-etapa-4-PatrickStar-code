@@ -46,7 +46,7 @@ async function create(agente) {
 async function deleteAgente(id) {
   try {
     const agenteIdNum = Number(id);
-    const deleted = await db("casos").where({ agente_id: agenteIdNum }).del();
+    const deleted = await db("agentes").where({ id: agenteIdNum }).del();
     return deleted > 0;
   } catch (error) {
     console.log(error);

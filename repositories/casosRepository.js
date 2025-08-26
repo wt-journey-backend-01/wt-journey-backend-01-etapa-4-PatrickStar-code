@@ -4,13 +4,10 @@ async function getAll({ agente_id, status } = {}) {
   try {
     let search = db.select("*").from("casos");
     if (agente_id !== undefined) {
-      search.where({ agente_id: agente_id });
+      search = search.where({ agente_id: agente_id });
     }
     if (status) {
-      search.where({ status: status });
-    }
-    if (!search) {
-      return false;
+      search = search.where({ status: status });
     }
     return await search;
   } catch (error) {
@@ -18,7 +15,6 @@ async function getAll({ agente_id, status } = {}) {
     return false;
   }
 }
-
 async function search(q) {
   try {
     const query = db
