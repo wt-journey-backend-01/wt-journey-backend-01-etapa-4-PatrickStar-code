@@ -1,291 +1,359 @@
 <sup>Esse é um feedback gerado por IA, ele pode conter erros.</sup>
 
-Você tem 7 créditos restantes para usar o sistema de feedback AI.
+Você tem 6 créditos restantes para usar o sistema de feedback AI.
 
 # Feedback para PatrickStar-code:
 
-Nota final: **48.7/100**
+Nota final: **50.5/100**
 
-# Feedback para PatrickStar-code 🚀
+# Feedback do seu desafio - PatrickStar-code 🚀
 
-Olá, Patrick! Antes de tudo, parabéns pelo esforço e pelo caminho que você já percorreu nesse desafio de API REST com Node.js, Express e PostgreSQL! 🎉 Você conseguiu implementar várias funcionalidades essenciais, e isso é muito legal de ver.
-
----
-
-## 🎉 Pontos Fortes e Conquistas Bônus
-
-- Você estruturou o projeto de forma muito próxima da arquitetura esperada, com pastas bem organizadas (`controllers`, `repositories`, `routes`, `middlewares`, `db`, etc). Isso é fundamental para escalabilidade e manutenção do código.
-- Os endpoints básicos de usuários (registro, login, logout, exclusão) estão funcionando e passaram nos testes principais.
-- A validação dos dados com `zod` está bem aplicada, garantindo que os dados enviados estejam no formato esperado.
-- O middleware de autenticação está implementado e aplicado nas rotas sensíveis (`/agentes` e `/casos`), garantindo proteção via JWT.
-- Você conseguiu implementar o logout e a exclusão de usuários, o que é um diferencial importante.
-- Parabéns por já ter implementado endpoints bônus, como o `/usuarios/me` (apesar de o teste não ter passado, você está no caminho certo).
-- Também implementou corretamente as validações de senha complexa, que é um ponto crucial para segurança.
+Olá, Patrick! Que jornada incrível você está trilhando no desafio da API REST com Node.js, Express e PostgreSQL! 🎉 Antes de mais nada, parabéns por ter implementado a parte de **autenticação** e **segurança** com JWT e bcrypt, e por ter estruturado seu projeto com uma arquitetura clara e modular. Isso é essencial para projetos profissionais e escaláveis! 👏
 
 ---
 
-## 🚨 Principais Testes que Falharam e Análise Detalhada
+## 🎯 O que você já mandou muito bem
 
-Vou listar os testes que falharam e analisar o motivo raiz para que você possa corrigir com foco e clareza.
+- **Autenticação JWT funcionando:** Você implementou o login, registro, logout e exclusão de usuários com tratamento adequado e mensagens claras.
+- **Middleware de autenticação:** Está corretamente verificando o token e protegendo rotas de agentes e casos.
+- **Validação com Zod:** Excelente uso para validar os dados de entrada, garantindo segurança e robustez.
+- **Migrations e seeds:** A tabela de usuários foi criada via migration, e você tem seeds para agentes e casos.
+- **Documentação:** O INSTRUCTIONS.md está bem detalhado e ajuda a entender o fluxo esperado.
+- **Testes bônus que passaram:** Você implementou endpoints de filtragem, busca por palavras-chave, e o endpoint `/usuarios/me` para retornar dados do usuário autenticado. Isso mostra que foi além do básico, parabéns! 🌟
 
 ---
 
-### 1. **Usuários: Recebe erro 400 ao tentar criar um usuário com e-mail já em uso**
+## 🚨 Testes que falharam e o que pode estar acontecendo
 
-**O que o teste espera:**  
-Quando um usuário tenta registrar um email já cadastrado, sua API deve responder com status 400 e uma mensagem clara.
+Você teve muitas falhas nos testes base, principalmente relacionados a **agentes** e **casos**, que são recursos protegidos e essenciais da API. Vou destrinchar os principais grupos de testes que falharam e o que pode estar causando esses problemas.
 
-**Problema no seu código:**
+---
 
-No seu `authController.js`, na função `cadastro`, você faz:
+### 1. **AGENTS: Criação, listagem, busca, atualização e deleção de agentes falharam**
 
-```js
-const usuario = await usuariosRepository.findByEmail(email);
-if (usuario) {
-  return res.status(400).json({ message: "Email ja cadastrado." });
-}
-```
+**Problema:** Todos os testes que envolvem agentes falharam, incluindo criação (`POST`), listagem (`GET`), busca por ID, atualização (PUT e PATCH) e deleção.
 
-Isso está correto, porém, no trecho anterior você tem um erro de digitação:
+**Análise de causa raiz:**
+
+- Você aplicou o middleware de autenticação em todas as rotas de agentes, o que é correto.
+- Porém, os testes indicam que o status code esperado não está sendo retornado corretamente, ou os dados estão diferentes do esperado.
+- Ao analisar o controller e repository, o código parece correto, mas tem um detalhe importante no repository:
 
 ```js
-const senhaHash = await bycrypt.hash(senha, 8);
-```
-
-Você escreveu `bycrypt` em vez de `bcrypt`. Isso gera um erro e impede que a função prossiga corretamente, fazendo com que o teste falhe.
-
-Além disso, no início da função você tem:
-
-```js
-if ((!email || !senha, !nome)) {
-  return res.status(400).json({ message: "Email,Senha e nome obrigatorio." });
-}
-```
-
-Aqui o uso do operador vírgula está incorreto. O correto seria usar `||` para verificar se algum campo está ausente:
-
-```js
-if (!email || !senha || !nome) {
-  return res.status(400).json({ message: "Email, Senha e nome obrigatórios." });
-}
-```
-
-**Como corrigir:**
-
-- Corrija o nome do pacote `bcrypt` na importação e uso dentro da função.
-- Corrija a condição para verificar campos obrigatórios.
-  
-Exemplo corrigido:
-
-```js
-const bcrypt = require("bcryptjs");
-
-// ...
-
-async function cadastro(req, res, next) {
+async function findById(id) {
   try {
-    const { email, senha, nome } = req.body;
-
-    if (!email || !senha || !nome) {
-      return res.status(400).json({ message: "Email, Senha e nome obrigatórios." });
+    const findIndex = await db("agentes").where({ id: Number(id) });
+    if (findIndex.length === 0) {
+      return false;
     }
-
-    const parsed = UsuarioSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues[0].message });
-    }
-
-    const usuario = await usuariosRepository.findByEmail(email);
-    if (usuario) {
-      return res.status(400).json({ message: "Email já cadastrado." });
-    }
-
-    const senhaHash = await bcrypt.hash(senha, 8);
-
-    const newUsuario = await usuariosRepository.create({
-      nome,
-      email,
-      senha: senhaHash,
-    });
-
-    return res.status(201).json(newUsuario);
+    return findIndex[0];
   } catch (error) {
-    next(error);
+    console.log(error);
+    return error;
   }
 }
 ```
 
----
+Aqui, você retorna `false` se não encontrar o agente, mas no controller você verifica `if (!agente)` para retornar 404. Isso é correto. Então, essa parte está ok.
 
-### 2. **Usuários: Erros 400 e 401 nos fluxos de login e autenticação**
-
-Você também usou `bycrypt` na função `login`:
+- Agora, no método `findAll` do repository:
 
 ```js
-const senhaMatch = await bycrypt.compare(senha, usuario.senha);
-```
-
-Isso deve ser `bcrypt.compare`. Esse erro impede a verificação correta da senha e gera falha no login e na autenticação.
-
----
-
-### 3. **Agentes: Falha em criar, listar, buscar, atualizar e deletar agentes**
-
-Apesar de muitos testes de agentes passarem, alguns falharam devido a:
-
-- Falta de validação de ID numérico em rotas que recebem `id` como parâmetro.
-- Em `agentesRepository.js`, na função `findById`, você retorna `false` quando não encontra agente:
-
-```js
-if (findIndex.length === 0) {
-  return false;
-}
-```
-
-No controller, você verifica:
-
-```js
-if (!agente) {
-  return res.status(404).json({ message: "Agente inexistente" });
-}
-```
-
-Isso está correto, mas o problema pode estar em IDs inválidos, como strings não numéricas. Você deve validar o parâmetro `id` em todos os controllers que recebem ID para garantir que é um número válido e retornar 400 caso contrário.
-
-Exemplo de validação no controller `findById`:
-
-```js
-const idNum = Number(req.params.id);
-if (Number.isNaN(idNum)) {
-  return res.status(400).json({ message: "ID inválido" });
-}
-```
-
-Você já fez isso em alguns controllers, mas precisa garantir que está presente em todos os pontos.
-
----
-
-### 4. **Casos: Falha em criar e buscar casos com ID de agente inválido**
-
-No controller `casosController.js`, na função `create`, você verifica se o agente existe:
-
-```js
-const agente = await agentesRepository.findById(parsed.data.agente_id);
-if (!agente) {
-  return res.status(404).json({ message: "Agente inexistente" });
-}
-```
-
-Porém, não há validação para o formato do `agente_id`. Se alguém enviar um valor inválido (ex: string), o banco pode lançar erro ou a busca falhar.
-
-**Sugestão:** Valide o `agente_id` para ser um número inteiro positivo antes de consultar o banco.
-
-Exemplo:
-
-```js
-if (!Number.isInteger(parsed.data.agente_id) || parsed.data.agente_id <= 0) {
-  return res.status(400).json({ message: "agente_id inválido" });
-}
-```
-
----
-
-### 5. **Middleware de autenticação: Mensagem de erro e tratamento**
-
-Seu middleware `authMiddleware.js` está bem implementado, verifica o token, decodifica e injeta `req.user`. Porém, no catch você chama:
-
-```js
-return next(errorHandler(error));
-```
-
-Mas o `errorHandler` parece ser uma função que formata o erro, não um middleware. O correto é passar o erro para o próximo middleware de erro, ou fazer o tratamento dentro do middleware.
-
-Sugestão:
-
-```js
-function authMiddleware(req, res, next) {
+async function findAll({ cargo, sort } = {}) {
   try {
-    const tokenHeader = req.headers.authorization;
-    const token = tokenHeader && tokenHeader.split(" ")[1];
-    if (!token) {
-      return res.status(401).json({ message: "Token de autenticação obrigatório." });
+    const search = db.select("*").from("agentes");
+    if (cargo) {
+      search.where({ cargo: cargo });
     }
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-      if (err) {
-        return res.status(401).json({ message: "Token de autenticação inválido." });
+    if (sort) {
+      if (sort === "dataDeIncorporacao") {
+        search.orderBy("dataDeIncorporacao", "asc");
+      } else if (sort === "-dataDeIncorporacao") {
+        search.orderBy("dataDeIncorporacao", "desc");
       }
-      req.user = decoded;
-      next();
-    });
+    }
+
+    return await search;
   } catch (error) {
-    next(error); // passa o erro para o middleware de erro padrão do Express
+    console.log(error);
+    return error;
   }
 }
 ```
 
+Aqui está um problema sutil: `search` é uma query builder, mas você está tentando usar `search.where()` e `search.orderBy()` diretamente, o que é correto, porém o Knex query builder é imutável e retorna uma nova query a cada chamada. Você deveria fazer:
+
+```js
+let search = db.select("*").from("agentes");
+if (cargo) {
+  search = search.where({ cargo });
+}
+if (sort) {
+  if (sort === "dataDeIncorporacao") {
+    search = search.orderBy("dataDeIncorporacao", "asc");
+  } else if (sort === "-dataDeIncorporacao") {
+    search = search.orderBy("dataDeIncorporacao", "desc");
+  }
+}
+return await search;
+```
+
+No seu código, você está chamando `search.where()` mas não está atualizando a variável `search`, então o filtro não é aplicado. Isso pode fazer com que a consulta retorne resultados errados ou não filtre corretamente, causando falha nos testes.
+
+- Também notei que no controller `deleteAgente` você chama:
+
+```js
+const inCase = await casosRepository.deleteByAgente(id);
+```
+
+Passando `id` que é uma string, mas no repository você faz:
+
+```js
+const deleted = await db("casos").where({ agente_id: id }).del();
+```
+
+Se o `id` não for convertido para número, pode causar problemas. Recomendo converter para número antes:
+
+```js
+const agenteIdNum = Number(id);
+const deleted = await db("casos").where({ agente_id: agenteIdNum }).del();
+```
+
+Além disso, no controller você não trata o caso de erro na deleção dos casos do agente, só imprime no console.
+
+- Outro ponto importante no controller de agentes é que você tem duas checagens de retorno `if (!agenteUpdated)` e `if (agenteUpdated === null)`, que são redundantes. Isso não deve causar falha, mas pode ser simplificado.
+
 ---
 
-### 6. **Rotas e organização**
+### 2. **CASES: Criação, listagem, busca, atualização e deleção de casos falharam**
 
-No seu `server.js`:
+**Problema:** Testes que envolvem casos também falharam em diversas operações.
+
+**Análise de causa raiz:**
+
+- No controller, ao buscar caso por ID:
+
+```js
+const caso = await casosRepository.findById(id);
+```
+
+No repository:
+
+```js
+async function findById(id) {
+  try {
+    const findIndex = await db("casos").where({ id: Number(id) });
+    if (findIndex.length === 0) {
+      return false;
+    }
+    return findIndex[0];
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
+}
+```
+
+Aqui está correto, mas note que no controller você converte `id` para número para validar, porém passa o `id` original para o repository. Isso pode funcionar, mas para evitar inconsistências, passe o número:
+
+```js
+const idNum = Number(id);
+const caso = await casosRepository.findById(idNum);
+```
+
+- No método `getAll` do repository:
+
+```js
+async function getAll({ agente_id, status } = {}) {
+  try {
+    const search = db.select("*").from("casos");
+    if (agente_id !== undefined) {
+      search.where({ agente_id: agente_id });
+    }
+    if (status) {
+      search.where({ status: status });
+    }
+    if (!search) {
+      return false;
+    }
+    return await search;
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
+}
+```
+
+Aqui ocorre o mesmo problema do `findAll` de agentes: você está chamando `search.where()` mas não está atualizando a variável `search`. O correto é:
+
+```js
+let search = db.select("*").from("casos");
+if (agente_id !== undefined) {
+  search = search.where({ agente_id });
+}
+if (status) {
+  search = search.where({ status });
+}
+return await search;
+```
+
+Sem isso, os filtros não são aplicados e o resultado pode ser incorreto.
+
+- No método `update` do repository:
+
+```js
+async function update(id, fieldsToUpdate) {
+  try {
+    const updated = await db("casos")
+      .where({ id: Number(id) })
+      .update(fieldsToUpdate, ["*"]);
+    if (!updated || updated.length === 0) {
+      return false;
+    }
+    return updated[0];
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
+}
+```
+
+O método `update` do Knex retorna um array com os registros atualizados, então essa parte está correta. Mas certifique-se que `fieldsToUpdate` não contenha o campo `id`, pois isso pode causar erro.
+
+- No controller, você faz validação para não permitir alterar `id`, o que está correto.
+
+- No método `deleteCaso` no repository e controller, está tudo correto, mas sempre garanta que o `id` seja um número.
+
+---
+
+### 3. **Tokens JWT e autenticação funcionam, mas falta validar o header Authorization com Bearer**
+
+Você já protegeu as rotas com o middleware que verifica o token JWT, e os testes de autenticação passaram, parabéns! 🎉
+
+---
+
+### 4. **Estrutura de Diretórios**
+
+Sua estrutura está muito próxima do esperado e está bem organizada! A única observação é que na pasta `routes` o arquivo `authRoutes.js` está correto, mas no `server.js` você tem:
 
 ```js
 app.use(authRoutes);
 ```
 
-O correto seria montar as rotas do auth com prefixo `/auth`, para manter consistência:
+Sem prefixo de rota. Para maior clareza e organização, recomendo usar:
 
 ```js
 app.use("/auth", authRoutes);
 ```
 
-Assim, as rotas ficam como `/auth/register`, `/auth/login`, etc., conforme especificado.
+Assim todas as rotas de autenticação ficam agrupadas sob `/auth`, por exemplo `/auth/register`, `/auth/login`, etc.
 
 ---
 
-### 7. **Documentação e INSTRUCTIONS.md**
+## 💡 Recomendações para você avançar e corrigir os erros
 
-Sua documentação está muito boa e clara, parabéns! Só fique atento para manter a consistência da rota do auth, caso altere o `server.js` para usar o prefixo `/auth`.
+1. **Atualize os métodos `findAll` e `getAll` dos repositories para usar a variável `search` atualizada:**
+
+```js
+// Exemplo em agentesRepository.js
+async function findAll({ cargo, sort } = {}) {
+  try {
+    let search = db.select("*").from("agentes");
+    if (cargo) {
+      search = search.where({ cargo });
+    }
+    if (sort) {
+      if (sort === "dataDeIncorporacao") {
+        search = search.orderBy("dataDeIncorporacao", "asc");
+      } else if (sort === "-dataDeIncorporacao") {
+        search = search.orderBy("dataDeIncorporacao", "desc");
+      }
+    }
+    return await search;
+  } catch (error) {
+    console.log(error);
+    return error;
+  }
+}
+```
+
+O mesmo ajuste para `casosRepository.js` no método `getAll`.
 
 ---
 
-## 📚 Recursos recomendados para você
+2. **Converta IDs para números antes de usá-los em queries:**
 
-- Sobre autenticação e JWT, recomendo muito este vídeo feito pelos meus criadores, que explica os conceitos básicos e fundamentais da cibersegurança:  
-  https://www.youtube.com/watch?v=Q4LQOfYwujk
+No `deleteByAgente` e em outras funções que usam IDs, faça:
 
-- Para entender melhor o uso do JWT na prática, este vídeo é excelente:  
-  https://www.youtube.com/watch?v=keS0JWOypIU
+```js
+const agenteIdNum = Number(id);
+const deleted = await db("casos").where({ agente_id: agenteIdNum }).del();
+```
 
-- Para o uso correto do bcrypt junto com JWT, este vídeo também é muito didático:  
+Isso evita erros de tipo e garante que o Knex faça a query correta.
+
+---
+
+3. **Ajuste o `server.js` para usar prefixo nas rotas de autenticação:**
+
+```js
+app.use("/auth", authRoutes);
+```
+
+Assim, evita confusões e melhora a organização.
+
+---
+
+4. **Simplifique os retornos duplicados no controller:**
+
+No `updateAgente` e `patch`, remova checagens redundantes como:
+
+```js
+if (!agenteUpdated) {
+  return res.status(404).json({ message: "Agente inexistente" });
+}
+
+if (agenteUpdated === null) {
+  return res.status(404).json({ message: "Agente não atualizado/não encontrado" });
+}
+```
+
+Basta uma delas, já que `false` ou `null` indicam falha.
+
+---
+
+5. **Recomendo fortemente os seguintes vídeos para aprofundar:**
+
+- Sobre uso correto do Knex Query Builder e construção de queries:  
+  https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s
+
+- Para entender melhor autenticação JWT e bcrypt:  
   https://www.youtube.com/watch?v=L04Ln97AwoY
 
-- Caso queira reforçar o entendimento sobre organização de projetos MVC em Node.js, veja este conteúdo:  
+- Para estruturar seu projeto com boas práticas MVC em Node.js:  
   https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s
 
-- Para aprofundar no uso do Knex, migrations e seeds, recomendo:  
-  https://www.youtube.com/watch?v=dXWy_aGCW1E  
-  https://www.youtube.com/watch?v=AJrK90D5el0&t=9s
+---
+
+## 📋 Resumo rápido dos principais pontos para focar
+
+- [ ] Corrigir os métodos `findAll` e `getAll` para atualizar a query builder corretamente (usar `search = search.where(...)`).
+- [ ] Garantir que IDs usados em queries estejam convertidos para números.
+- [ ] Ajustar o uso do prefixo `/auth` nas rotas do servidor.
+- [ ] Simplificar checagens redundantes nos controllers.
+- [ ] Revisar o tratamento de erros para garantir que mensagens e status codes estejam conforme esperado.
+- [ ] Revisar o uso do middleware de autenticação para garantir que todas as rotas protegidas estejam corretas.
+- [ ] Testar localmente cada endpoint após as correções para garantir que os testes base passem.
 
 ---
 
-## 📝 Resumo dos principais pontos para focar
+Patrick, você está no caminho certo e com uma base muito boa! 💪 Corrigindo esses detalhes de query builder e tipos, sua API vai ficar tinindo e passar nos testes base com louvor. Continue firme, revisando o fluxo das requisições e validando os dados com atenção — isso faz toda a diferença na robustez da aplicação.
 
-- **Corrigir o erro de digitação `bycrypt` para `bcrypt`** no `authController.js` para que hashing e comparação de senha funcionem corretamente.
-- **Corrigir a condição de validação de campos obrigatórios** no cadastro para usar `||` em vez de vírgula.
-- **Validar IDs numéricos em todos os controllers** que recebem parâmetros `id` para evitar erros e retornar status 400 quando inválidos.
-- **Validar `agente_id` enviado na criação e atualização de casos** para garantir que seja um número válido.
-- **Ajustar o middleware de autenticação para tratamento correto de erros**, evitando chamar `errorHandler` diretamente no middleware.
-- **Alterar o uso do `authRoutes` no `server.js` para usar o prefixo `/auth`**, deixando as rotas RESTful e organizadas.
-- **Testar novamente após as correções e garantir que os testes base passem 100%**.
+Se precisar, volte aos vídeos que recomendei para fortalecer fundamentos e boas práticas. Você tem tudo para entregar um projeto profissional e seguro! 🚀
 
----
+Conte comigo para o que precisar, e bora codar! 💙
 
-Patrick, você está no caminho certo! Esses ajustes vão destravar vários testes e deixar sua API robusta e segura. Continue praticando e aprimorando seu código, a segurança e a organização são pilares fundamentais para aplicações reais.
-
-Se precisar, volte aos vídeos indicados para reforçar os conceitos e não hesite em testar passo a passo. Estou aqui torcendo pelo seu sucesso! 🚀💪
-
-Abraços e continue firme! 👊✨
+Um abraço virtual do seu Code Buddy! 🤖✨
 
 > Caso queira tirar uma dúvida específica, entre em contato com o Chapter no nosso [discord](https://discord.gg/DryuHVnz).
 
