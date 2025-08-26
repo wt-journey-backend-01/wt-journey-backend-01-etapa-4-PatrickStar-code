@@ -47,8 +47,11 @@ async function findAll(req, res, next) {
 
 async function findById(req, res, next) {
   try {
-    const id = req.params.id;
-    const agente = await agentesRepository.findById(id);
+    const idNum = Number(req.params.id);
+    if (Number.isNaN(idNum)) {
+      return res.status(400).json({ message: "ID inválido" });
+    }
+    const agente = await agentesRepository.findById(idNum);
     if (!agente) {
       return res.status(404).json({ message: "Agente inexistente" });
     }
@@ -140,10 +143,7 @@ async function patch(req, res, next) {
       return res.status(400).json({ message: parsed.error.issues[0].message });
     }
 
-    const agenteUpdated = await agentesRepository.updateAgente(
-      id,
-      Object.fromEntries(Object.entries(parsed.data))
-    );
+    const agenteUpdated = await agentesRepository.updateAgente(id, parsed.data);
     if (!agenteUpdated) {
       return res.status(404).json({ message: "Agente inexistente" });
     }

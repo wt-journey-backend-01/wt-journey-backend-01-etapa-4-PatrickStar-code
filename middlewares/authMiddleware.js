@@ -16,7 +16,7 @@ function authMiddleware(req, res, next) {
     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
       if (err) {
         return res
-          .status(400)
+          .status(401)
           .json({ message: "Token de autenticação inválido." });
       }
       req.user = decoded;

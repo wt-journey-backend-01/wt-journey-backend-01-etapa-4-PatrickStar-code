@@ -8,7 +8,7 @@ const jwt = require("jsonwebtoken");
  */
 exports.seed = async function (knex) {
   // Limpa a tabela antes de inserir
-  await knex("users").del();
+  await knex("usuarios").del();
 
   // Criptografa senhas
   const senhaHash1 = await bcrypt.hash("Senha@1234", 8);

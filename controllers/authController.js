@@ -1,23 +1,25 @@
 const { z } = require("zod");
 const express = require("express");
 const usuariosRepository = require("../repositories/usuariosRepository");
-const bycrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const errorHandler = require("../utils/errorHandler");
+const bcrypt = require("bcryptjs");
 
 const senhaRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
-const UsuarioSchema = z.object({
-  nome: z.string().min(1, "O campo 'nome' é obrigatório."),
-  email: z.email(),
-  senha: z
-    .string()
-    .min(8, "A senha deve ter no mínimo 8 caracteres.")
-    .regex(senhaRegex, {
-      message:
-        "A senha deve conter pelo menos uma letra minúscula, uma maiúscula, um número e um caractere especial.",
-    }),
-});
+const UsuarioSchema = z
+  .object({
+    nome: z.string().min(1, "O campo 'nome' é obrigatório."),
+    email: z.email(),
+    senha: z
+      .string()
+      .min(8, "A senha deve ter no mínimo 8 caracteres.")
+      .regex(senhaRegex, {
+        message:
+          "A senha deve conter pelo menos uma letra minúscula, uma maiúscula, um número e um caractere especial.",
+      }),
+  })
+  .strict();
 
 const LoginSchema = z.object({
   email: z.email(),
@@ -79,7 +81,7 @@ async function login(req, res, next) {
 
     const usuario = await usuariosRepository.findByEmail(email);
     if (!usuario) {
-      return res.status(404).json({ message: "Usuario nao encontrado." });
+      return res.status(400).json({ message: "Usuario nao encontrado." });
     }
 
     const senhaMatch = await bycrypt.compare(senha, usuario.senha);

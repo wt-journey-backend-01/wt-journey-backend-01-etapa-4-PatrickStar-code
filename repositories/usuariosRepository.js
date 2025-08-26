@@ -2,7 +2,7 @@ const db = require("../db/db");
 
 async function findByEmail(email) {
   try {
-    const findIndex = await db("users").where({ email: email });
+    const findIndex = await db("usuarios").where({ email: email });
     if (findIndex.length === 0) {
       return false;
     }
@@ -15,7 +15,7 @@ async function findByEmail(email) {
 
 async function create(user) {
   try {
-    const created = await db("users").insert(user).returning("*");
+    const created = await db("usuarios").insert(user).returning("*");
     return created[0];
   } catch (error) {
     console.log(error);
@@ -25,7 +25,7 @@ async function create(user) {
 
 async function deleteUser(id) {
   try {
-    const deleted = await db("users")
+    const deleted = await db("usuarios")
       .where({ id: Number(id) })
       .del();
     return deleted > 0;
