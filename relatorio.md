@@ -1,188 +1,285 @@
 <sup>Esse é um feedback gerado por IA, ele pode conter erros.</sup>
 
-Você tem 1 créditos restantes para usar o sistema de feedback AI.
+Você tem 0 créditos restantes para usar o sistema de feedback AI.
 
 # Feedback para PatrickStar-code:
 
 Nota final: **50.5/100**
 
-# Feedback para PatrickStar-code 🚀
+```markdown
+# Olá, PatrickStar-code! 👋🚀
 
-Olá, Patrick! Primeiramente, parabéns por todo o esforço e dedicação que você colocou nesse desafio! 🎉 Você conseguiu implementar várias funcionalidades importantes, especialmente na parte de usuários: o registro, login, logout e exclusão estão funcionando muito bem, com validações robustas e segurança com bcrypt e JWT. Isso é fundamental e você mandou super bem! 👏
+Primeiramente, parabéns pelo esforço e por chegar até aqui! Você já avançou bastante implementando toda a estrutura de autenticação com JWT, hashing de senhas com bcrypt e protegendo as rotas com middleware. Isso é fundamental para uma API segura e profissional! 🎉
 
-Além disso, você aplicou corretamente o middleware de autenticação nas rotas sensíveis, garantindo que elas estejam protegidas, o que é um grande passo para uma API segura. Também ficou claro que você estruturou seu projeto seguindo a arquitetura MVC, separando controllers, repositories, rotas e middlewares, o que facilita a manutenção e escalabilidade do código.
-
----
-
-## Análise dos testes que falharam e pontos de melhoria
-
-### 1. Testes base de AGENTS e CASES falharam em massa
-
-Você teve falhas em todos os testes relacionados às operações CRUD dos agentes e casos, incluindo criação, listagem, busca por ID, atualização (PUT e PATCH) e exclusão. Isso indica que a camada de agentes e casos está com problemas de funcionamento ou integração.
+Além disso, você conseguiu fazer passar todos os testes base relacionados a usuários (registro, login, logout, exclusão) e a proteção das rotas com JWT — isso mostra que a parte de **segurança e autenticação** está muito bem encaminhada! 👏👏
 
 ---
 
-### Causa raiz provável: Falhas nas respostas HTTP e/ou no tratamento de erros e dados
+# Análise Geral dos Testes que Falharam
 
-Vamos destrinchar o que pode estar acontecendo:
+Você teve **diversos testes falhando relacionados à manipulação dos agentes e casos**, principalmente nos endpoints de:
 
-- **Status codes e respostas incorretas ou inconsistentes:**  
-  Os testes esperam status codes e formatos muito específicos, por exemplo, status 201 com o objeto criado, status 204 com corpo vazio para deleção, status 400 para payloads inválidos, etc.  
-  Revise nas funções dos controllers `agentesController.js` e `casosController.js` se você está retornando exatamente esses códigos e formatos.
+- Criação, listagem, busca, atualização (PUT e PATCH) e exclusão de agentes
+- Criação, listagem, busca, atualização (PUT e PATCH) e exclusão de casos
 
-- **Validação e parsing dos parâmetros:**  
-  Em `casosController.js`, por exemplo, notei que na função `getById` você converte o ID para número (`Number(req.params.id)`), mas ao buscar no repositório chama `casosRepository.findById(id)` passando o ID original como string. Isso pode causar falha na consulta, pois o banco espera número.  
-  O mesmo acontece no agente: às vezes você converte para `Number`, outras vezes não. Essa inconsistência pode estar causando retornos nulos ou vazios, e consequentemente status 404.
-
-- **Retorno do repositório:**  
-  Nos repositórios, por exemplo em `agentesRepository.findById`, você retorna `null` quando não encontra, mas em `casosRepository.findById` você retorna `false`. Essa diferença pode causar confusão no controller, que espera um valor falso para decidir o status 404.  
-  Recomendo padronizar para sempre retornar `null` ou `false` e tratar isso adequadamente no controller.
-
-- **Problemas no middleware de autenticação:**  
-  Os testes indicam que você passou nos testes de 401 sem token, então isso está ok.
+Esses testes são cruciais porque são a espinha dorsal da API para o Departamento de Polícia, e a falha neles impacta diretamente a funcionalidade principal do sistema.
 
 ---
 
-### Exemplo de melhoria no controller `casosController.js` para o método `getById`:
+# Vamos entender melhor o que pode estar acontecendo? 🕵️‍♂️
+
+## 1. Testes de Agentes falhando (exemplos: criação, listagem, busca por ID, atualização, exclusão)
+
+### Possível causa raiz:
+
+- **Middleware de autenticação funcionando, pois o teste de 401 sem token passou, então o problema está dentro da lógica dos controllers/repositories de agentes.**
+
+- Ao analisar o `agentesRepository.js`, vejo que você está retornando erros diretamente em catch com `return error` ou `console.log(error); return error;`. Isso pode causar problemas porque o controller espera um resultado ou `null/false` para decidir a resposta HTTP, mas se recebe um objeto de erro, isso pode gerar comportamentos inesperados.
+
+- Exemplo no método `findAll`:
 
 ```js
-async function getById(req, res, next) {
+async function findAll({ cargo, sort } = {}) {
   try {
-    const idNum = Number(req.params.id);
-    if (Number.isNaN(idNum)) {
-      return res.status(400).json({ message: "ID inválido" });
+    let search = db.select("*").from("agentes");
+    if (cargo) {
+      search = search.where({ cargo });
     }
-
-    // Sempre passar número para o repositório
-    const caso = await casosRepository.findById(idNum);
-    if (!caso) {
-      return res.status(404).json({ message: "Caso inexistente" });
+    if (sort) {
+      if (sort === "dataDeIncorporacao") {
+        search = search.orderBy("dataDeIncorporacao", "asc");
+      } else if (sort === "-dataDeIncorporacao") {
+        search = search.orderBy("dataDeIncorporacao", "desc");
+      }
     }
-    return res.status(200).json(caso);
+    return await search;
   } catch (error) {
-    next(error);
+    return error; // <-- problema: retornar erro em vez de lançar
   }
 }
 ```
 
-Note que você já faz isso em alguns lugares, mas em outros não. Esse tipo de inconsistência pode gerar falhas.
-
----
-
-### 2. Validação dos dados e uso do Zod
-
-Você fez um ótimo uso do Zod para validar os dados de entrada, parabéns! Porém, em alguns pontos, como nos controllers de casos e agentes, a validação pode estar muito rígida ou não estar tratando todos os casos, especialmente em atualizações parciais.
-
-Por exemplo, no método `update` do `casosController.js`, você faz:
+- Retornar o erro assim pode fazer com que o controller envie um objeto de erro como resposta 200, ou que o fluxo se quebre silenciosamente. O ideal é **lançar o erro para o middleware de erro capturar**:
 
 ```js
-const parsed = CasoSchema.safeParse(req.body);
-if (!parsed.success) {
-  const messages = parsed.error.issues.map((issue) => issue.message);
-  return res.status(400).json({ messages });
+catch (error) {
+  throw error; // ou simplesmente não capturar aqui e deixar propagar
 }
 ```
 
-Mas você não verifica se o campo `id` está presente antes da validação, o que pode causar erros se o cliente enviar o campo `id` para alteração, o que não é permitido.
+- Isso vale para todos os métodos do repository.
 
-Sugestão: faça a checagem do campo `id` antes da validação, para evitar mensagens confusas.
+- Além disso, no controller `agentesController.js`, você está validando corretamente os dados com Zod, o que é ótimo! Porém, se o repository retornar algo inesperado (como um erro), o fluxo pode quebrar.
 
----
-
-### 3. Atualização no repositório para retornar `null` ao invés de `false`
-
-No `casosRepository.js`:
+- Outro ponto importante: no `updateAgente` do repository, você faz:
 
 ```js
-async function findById(id) {
-  try {
-    const findIndex = await db("casos").where({ id: Number(id) });
-    if (findIndex.length === 0) {
-      return null; // padronizar para null
-    }
-    return findIndex[0];
-  } catch (error) {
-    console.log(error);
-    return error;
-  }
+const updateAgente = await db("agentes")
+  .where({ id: Number(id) })
+  .update(fieldsToUpdate, ["*"]);
+
+if (!updateAgente || updateAgente.length === 0) {
+  return false;
 }
+return updateAgente[0];
 ```
 
-E no `casosController.js` trate `null` como "não encontrado".
+- O método `.update()` com o PostgreSQL e Knex retorna um array com os registros atualizados, mas em algumas versões ou configurações pode retornar o número de linhas afetadas (número). Se for número, a condição `updateAgente.length` pode causar erro.
+
+- Recomendo verificar o retorno do `.update()` e garantir que está retornando o registro atualizado, por exemplo:
+
+```js
+const updatedRows = await db("agentes")
+  .where({ id: Number(id) })
+  .update(fieldsToUpdate)
+  .returning("*");
+
+if (!updatedRows || updatedRows.length === 0) {
+  return false;
+}
+return updatedRows[0];
+```
+
+- Isso garante que você está retornando o objeto atualizado.
+
+- O mesmo raciocínio vale para os métodos de atualização e exclusão dos casos.
 
 ---
 
-### 4. Sobre a estrutura de diretórios
+## 2. Testes de Casos falhando (criação, listagem, busca, atualização, exclusão)
 
-Sua estrutura está muito bem organizada e condiz com o esperado! Você tem:
+- O mesmo problema de tratamento de erros e retorno pode estar acontecendo no `casosRepository.js`.
 
-- `routes/` com as rotas separadas para agentes, casos e auth  
-- `controllers/` com os controladores correspondentes  
-- `repositories/` para acesso ao banco  
-- `middlewares/` com o middleware de autenticação  
-- `db/` com migrations, seeds e configuração do knex  
-- `utils/` para tratamento de erros
+- Por exemplo, no método `deleteCaso`:
 
-Isso é excelente e demonstra um bom domínio da arquitetura MVC! 🎯
+```js
+const deleted = await db("casos")
+  .where({ id: Number(id) })
+  .del();
+return deleted > 0 ? true : null;
+```
+
+- Aqui você retorna `null` se não deletou nada, mas no controller você verifica se o retorno é falso para enviar 404. Melhor manter consistência e retornar `false` para indicar que não deletou:
+
+```js
+return deleted > 0;
+```
+
+- Além disso, no método `update` do repository, a mesma questão do `.update()` e `.returning()` se aplica.
 
 ---
 
-### 5. Pequenas melhorias no código do authController.js
+## 3. Middleware de autenticação está ok
 
-Na função `login`, você retorna o token com a chave `"access_token"`, mas no enunciado e instruções o esperado é `"acess_token"` (sem o "c" duplo). Esse detalhe pode causar falha nos testes que esperam a chave exata.
+- Os testes de 401 sem token passaram, mostrando que o middleware está funcionando e aplicado corretamente nas rotas.
+
+---
+
+## 4. Estrutura de Diretórios e Arquivos
+
+- Sua estrutura está muito bem organizada e segue o padrão esperado, com pastas para controllers, repositories, routes, middlewares, db, etc. Isso é ótimo! 👍
+
+- Apenas fique atento para manter o arquivo `.env` com a variável `JWT_SECRET` corretamente configurada para que o JWT funcione em todos os ambientes.
+
+---
+
+# Recomendações práticas para corrigir os erros:
+
+### 1. Ajustar tratamento de erros nos repositories
+
+Troque todos os `catch` que fazem `return error` por `throw error` para que o middleware de erro global capture as exceções.
 
 Exemplo:
+
+```js
+async function findAll({ cargo, sort } = {}) {
+  try {
+    // ... lógica
+  } catch (error) {
+    throw error; // em vez de return error
+  }
+}
+```
+
+### 2. Ajustar os métodos de update para usar `.returning("*")`
+
+No `agentesRepository.js`:
+
+```js
+async function updateAgente(id, fieldsToUpdate) {
+  try {
+    const updatedRows = await db("agentes")
+      .where({ id: Number(id) })
+      .update(fieldsToUpdate)
+      .returning("*");
+
+    if (!updatedRows || updatedRows.length === 0) {
+      return false;
+    }
+    return updatedRows[0];
+  } catch (error) {
+    throw error;
+  }
+}
+```
+
+No `casosRepository.js`, faça o mesmo para o método `update`:
+
+```js
+async function update(id, fieldsToUpdate) {
+  try {
+    const updatedRows = await db("casos")
+      .where({ id: Number(id) })
+      .update(fieldsToUpdate)
+      .returning("*");
+
+    return updatedRows && updatedRows.length > 0 ? updatedRows[0] : null;
+  } catch (error) {
+    throw error;
+  }
+}
+```
+
+### 3. Ajustar retornos booleanos para exclusão
+
+No `deleteCaso` e `deleteByAgente`:
+
+```js
+return deleted > 0; // sempre retorna booleano
+```
+
+### 4. No controller `authController.js`, tem um pequeno erro de digitação no retorno do login:
+
+Você retorna:
+
+```js
+return res.status(200).json({ access_token: token });
+```
+
+Mas na especificação do projeto e no INSTRUCTIONS.md, o campo deve ser `acess_token` (sem o segundo "c"):
+
+```json
+{
+  "acess_token": "token aqui"
+}
+```
+
+Para evitar falha nos testes, altere para:
 
 ```js
 return res.status(200).json({ acess_token: token });
 ```
 
-Essa diferença de nomenclatura pode parecer pequena, mas os testes automatizados são bastante rigorosos quanto a isso.
+---
+
+# Pontos Bônus conquistados 🎖️
+
+- Implementação completa de autenticação com JWT e proteção das rotas com middleware.
+- Validação rigorosa dos dados com Zod, garantindo que os dados enviados estejam no formato correto.
+- Documentação clara no `INSTRUCTIONS.md` explicando o fluxo de autenticação e uso do token JWT.
+- Estrutura do projeto organizada conforme esperado, facilitando manutenção e escalabilidade.
 
 ---
 
-### 6. Sugestão para melhorar a segurança do logout
+# Recursos recomendados para você aprofundar e corrigir os pontos:
 
-Atualmente, seu logout apenas retorna uma mensagem, mas o JWT continua válido até expirar. Para um logout efetivo, seria ideal implementar blacklist de tokens ou refresh tokens, mas isso é um bônus e não obrigatório.
+- Para entender melhor o uso correto do Knex com `.update()` e `.returning()`, veja este vídeo:  
+  [Guia detalhado do Knex Query Builder](https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s)
 
----
+- Para melhorar o tratamento de erros e entender boas práticas em Node.js:  
+  [Arquitetura MVC e boas práticas em Node.js](https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s)
 
-## Recursos recomendados para você aprofundar e corrigir os pontos acima:
+- Para reforçar conceitos de autenticação JWT e bcrypt:  
+  [Vídeo sobre JWT na prática](https://www.youtube.com/watch?v=keS0JWOypIU)  
+  [Vídeo sobre JWT e bcrypt](https://www.youtube.com/watch?v=L04Ln97AwoY)
 
-- Para entender melhor sobre validação e uso do Zod:  
-  https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s (Arquitetura MVC e boas práticas)
-
-- Para aprofundar em autenticação JWT e bcrypt (muito importante para a segurança):  
-  - https://www.youtube.com/watch?v=Q4LQOfYwujk (conceitos básicos de autenticação e segurança, feito pelos meus criadores)  
-  - https://www.youtube.com/watch?v=keS0JWOypIU (JWT na prática)  
-  - https://www.youtube.com/watch?v=L04Ln97AwoY (JWT + bcrypt)
-
-- Para manipulação e query com Knex.js, que pode ajudar a evitar erros no repositório:  
-  https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s
+- Para garantir que seu ambiente Docker e banco de dados estão configurados corretamente, recomendo:  
+  [Configuração de Banco de Dados com Docker e Knex](https://www.youtube.com/watch?v=uEABDBQV-Ek&t=1s)
 
 ---
 
-## Resumo dos principais pontos para focar:
+# Resumo dos principais pontos para focar:
 
-- ✅ Corrija inconsistências no tratamento dos IDs (usar sempre `Number(id)` antes de consultar o banco)  
-- ✅ Padronize os retornos dos repositórios para `null` quando não encontrar registros  
-- ✅ Ajuste os status codes e respostas dos controllers para atender exatamente ao esperado (201, 204, 400, 404, etc)  
-- ✅ Atenção à nomenclatura correta do token no login (`acess_token` e não `access_token`)  
-- ✅ Verifique se o campo `id` está sendo protegido contra alterações em todas as rotas PUT/PATCH  
-- ✅ Continue usando Zod para validação, mas trate os casos de campo extra ou inválido antes da validação para mensagens mais claras  
-- ✅ Mantenha a estrutura do projeto que está ótima!  
-- ✅ Para o logout, pense em estratégias para invalidar tokens (bônus)  
+- ❌ Corrigir o tratamento de erros nos repositories: usar `throw error` em vez de `return error`.
+- ❌ Ajustar os métodos de update para usar `.returning("*")` e garantir que o objeto atualizado seja retornado.
+- ❌ Padronizar retornos booleanos para exclusão de registros.
+- ❌ Corrigir o campo `access_token` para `acess_token` no login para passar os testes.
+- ✅ Manter o middleware de autenticação aplicado em rotas sensíveis.
+- ✅ Continuar usando Zod para validação rigorosa dos dados.
+- ✅ Manter a estrutura de diretórios organizada conforme o padrão esperado.
 
 ---
 
-Patrick, você está muito próximo de ter essa API funcionando perfeitamente! 💪 Seu código mostra que você entende os conceitos principais e já aplicou vários deles com qualidade. Com esses ajustes finos e atenção aos detalhes, você vai conseguir passar todos os testes e entregar um projeto profissional.
+# Para finalizar...
 
-Continue firme, revisando seu código com calma, testando cada endpoint e validando as respostas conforme o esperado. Estou aqui torcendo pelo seu sucesso! 🚀
+Patrick, você está no caminho certo! Essas correções vão destravar a maior parte dos testes que estão falhando e deixar sua API pronta para produção. Continue focado, revise esses pontos com calma e não hesite em usar os recursos que te indiquei para se aprofundar.
 
-Qualquer dúvida, só chamar! 😉
+Estou aqui torcendo pelo seu sucesso, conte comigo para o que precisar! 💪🚀
 
-Um abraço,  
-Seu Code Buddy 🤖✨
+Um forte abraço e até a próxima revisão! 🤗👨‍💻
+
+---
+```
 
 > Caso queira tirar uma dúvida específica, entre em contato com o Chapter no nosso [discord](https://discord.gg/DryuHVnz).
 
