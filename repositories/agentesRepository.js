@@ -15,8 +15,7 @@ async function findAll({ cargo, sort } = {}) {
     }
     return await search;
   } catch (error) {
-    console.log(error);
-    return error;
+    return false;
   }
 }
 
@@ -28,8 +27,7 @@ async function findById(id) {
     }
     return findIndex[0];
   } catch (error) {
-    console.log(error);
-    return error;
+    return false;
   }
 }
 
@@ -38,8 +36,7 @@ async function create(agente) {
     const created = await db("agentes").insert(agente).returning("*");
     return created[0];
   } catch (error) {
-    console.log(error);
-    return error;
+    return false;
   }
 }
 

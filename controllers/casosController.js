@@ -40,7 +40,7 @@ async function getAll(req, res, next) {
   try {
     const parsed = QueryParamsSchema.safeParse(req.query);
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues[0].message });
+      return res.status(400).json({ message: parsed.error.issues.message });
     }
     const { agente_id, status } = parsed.data;
 
@@ -61,7 +61,7 @@ async function search(req, res, next) {
   try {
     const parsed = searchQuerySchema.safeParse(req.query);
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues[0].message });
+      return res.status(400).json({ message: parsed.error.issues.message });
     }
 
     const { q } = parsed.data;
@@ -76,7 +76,7 @@ async function create(req, res, next) {
   try {
     const parsed = CasoSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues[0].message });
+      return res.status(400).json({ message: parsed.error.issues.message });
     }
 
     if (
@@ -129,7 +129,7 @@ async function update(req, res, next) {
     const parsed = CasoSchema.safeParse(req.body);
 
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues[0].message });
+      return res.status(400).json({ message: parsed.error.issues.message });
     }
 
     if ("id" in req.body) {
@@ -183,7 +183,7 @@ async function patch(req, res, next) {
 
     const parsed = CasoPartial.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.issues[0].message });
+      return res.status(400).json({ message: parsed.error.issues.message });
     }
 
     if ("id" in req.body) {

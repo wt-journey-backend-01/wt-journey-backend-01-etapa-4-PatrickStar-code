@@ -1,11 +1,7 @@
-/**
- * @param { import("knex").Knex } knex
- * @returns { Promise<void> }
- */
 exports.seed = async function (knex) {
-  // Deletes ALL existing entries
-
+  // Limpa antes de inserir
   await knex("casos").del();
+
   await knex("casos").insert([
     {
       titulo: "Homicídio no bairro União",

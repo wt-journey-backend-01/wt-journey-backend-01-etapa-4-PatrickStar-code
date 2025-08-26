@@ -11,7 +11,6 @@ async function getAll({ agente_id, status } = {}) {
     }
     return await search;
   } catch (error) {
-    console.log(error);
     return false;
   }
 }
