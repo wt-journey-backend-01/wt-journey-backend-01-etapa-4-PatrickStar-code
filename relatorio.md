@@ -1,226 +1,158 @@
 <sup>Esse é um feedback gerado por IA, ele pode conter erros.</sup>
 
-Você tem 8 créditos restantes para usar o sistema de feedback AI.
+Você tem 7 créditos restantes para usar o sistema de feedback AI.
 
 # Feedback para PatrickStar-code:
 
-Nota final: **47.0/100**
+Nota final: **48.7/100**
 
 # Feedback para PatrickStar-code 🚀
 
-Olá, Patrick! Primeiro, quero parabenizá-lo pelo esforço evidente em estruturar sua API com segurança, autenticação via JWT e proteção das rotas. Você conseguiu implementar várias funcionalidades essenciais e ainda avançou em alguns bônus, como o endpoint `/usuarios/me` para retornar os dados do usuário autenticado — isso é excelente! 🎉👏
+Olá, Patrick! Antes de tudo, parabéns pelo esforço e pelo caminho que você já percorreu nesse desafio de API REST com Node.js, Express e PostgreSQL! 🎉 Você conseguiu implementar várias funcionalidades essenciais, e isso é muito legal de ver.
 
 ---
 
-## O que está muito bom e merece destaque 🎯
+## 🎉 Pontos Fortes e Conquistas Bônus
 
-- **Organização do código:** Você estruturou bem seu projeto em controllers, repositories, middlewares e rotas, seguindo o padrão MVC, o que facilita a manutenção e escalabilidade.
-- **Uso do Zod para validação:** O uso do Zod para validar os dados de entrada, tanto para agentes, casos quanto para usuários, é um ponto forte. Isso ajuda a garantir que os dados estejam no formato esperado.
-- **Autenticação JWT:** Você implementou o fluxo de registro, login, logout e exclusão de usuários com JWT e bcrypt, o que é fundamental para segurança.
-- **Proteção das rotas:** O middleware `authMiddleware` está corretamente aplicado nas rotas que precisam de autenticação.
-- **Documentação no INSTRUCTIONS.md:** Está clara e completa, explicando bem o fluxo de autenticação e como usar o token JWT.
-
----
-
-## Pontos de atenção e melhorias para destravar sua nota e funcionamento 💡
-
-### 1. Nome da tabela de usuários inconsistente com a migration e os repositórios
-
-No arquivo da migration que cria a tabela de usuários (`db/migrations/20250823153901_create_users_table.js`), você criou a tabela com o nome **"users"**:
-
-```js
-return knex.schema.createTable("users", (table) => {
-  table.increments("id").primary();
-  table.string("nome").notNullable();
-  table.string("email").notNullable();
-  table.string("senha").notNullable();
-});
-```
-
-Porém, no enunciado e em todo o restante do projeto, a tabela esperada é **"usuarios"** (em português), conforme indicado no requisito da criação da tabela.
-
-Além disso, no seu `usuariosRepository.js`, você está consultando a tabela `"users"`:
-
-```js
-const findIndex = await db("users").where({ email: email });
-```
-
-**Por que isso é um problema?**  
-Os testes e a aplicação esperam que a tabela seja `usuarios`. Se sua migration cria `users` e seu repositório consulta `users`, mas o ambiente de testes e o restante do código esperam `usuarios`, haverá falha na persistência e consulta dos dados dos usuários.
-
-**Como corrigir?**  
-Altere sua migration para criar a tabela `usuarios` com os campos corretos, assim:
-
-```js
-exports.up = function (knex) {
-  return knex.schema.createTable("usuarios", (table) => {
-    table.increments("id").primary();
-    table.string("nome").notNullable();
-    table.string("email").notNullable().unique();
-    table.string("senha").notNullable();
-  });
-};
-```
-
-E no seu `usuariosRepository.js`, ajuste para consultar a tabela `usuarios`:
-
-```js
-const findIndex = await db("usuarios").where({ email: email });
-```
-
-**Importante:** Além disso, adicione a restrição de **únicidade** para o campo `email` na migration, para garantir que não haja duplicidade.
+- Você estruturou o projeto de forma muito próxima da arquitetura esperada, com pastas bem organizadas (`controllers`, `repositories`, `routes`, `middlewares`, `db`, etc). Isso é fundamental para escalabilidade e manutenção do código.
+- Os endpoints básicos de usuários (registro, login, logout, exclusão) estão funcionando e passaram nos testes principais.
+- A validação dos dados com `zod` está bem aplicada, garantindo que os dados enviados estejam no formato esperado.
+- O middleware de autenticação está implementado e aplicado nas rotas sensíveis (`/agentes` e `/casos`), garantindo proteção via JWT.
+- Você conseguiu implementar o logout e a exclusão de usuários, o que é um diferencial importante.
+- Parabéns por já ter implementado endpoints bônus, como o `/usuarios/me` (apesar de o teste não ter passado, você está no caminho certo).
+- Também implementou corretamente as validações de senha complexa, que é um ponto crucial para segurança.
 
 ---
 
-### 2. Falta de restrição de unicidade para o campo `email` na tabela de usuários
+## 🚨 Principais Testes que Falharam e Análise Detalhada
 
-No requisito, o campo `email` deve ser único para evitar cadastro duplicado. Na sua migration, o campo `email` está definido como:
-
-```js
-table.string("email").notNullable();
-```
-
-Sem a restrição `.unique()`, o banco permite emails duplicados, o que pode causar problemas de autenticação e falha em validações.
-
-**Como corrigir?**
-
-Adicione `.unique()` no campo `email`:
-
-```js
-table.string("email").notNullable().unique();
-```
+Vou listar os testes que falharam e analisar o motivo raiz para que você possa corrigir com foco e clareza.
 
 ---
 
-### 3. Migration `down` da tabela `usuarios` está vazia
+### 1. **Usuários: Recebe erro 400 ao tentar criar um usuário com e-mail já em uso**
 
-No arquivo da migration de usuários, a função `down` está vazia:
+**O que o teste espera:**  
+Quando um usuário tenta registrar um email já cadastrado, sua API deve responder com status 400 e uma mensagem clara.
 
-```js
-exports.down = function (knex) {};
-```
+**Problema no seu código:**
 
-Isso impede que você possa **reverter** essa migration, o que é uma prática essencial para controle de versões do banco.
-
-**Como corrigir?**
-
-Implemente o rollback para dropar a tabela `usuarios`:
+No seu `authController.js`, na função `cadastro`, você faz:
 
 ```js
-exports.down = function (knex) {
-  return knex.schema.dropTableIfExists("usuarios");
-};
+const usuario = await usuariosRepository.findByEmail(email);
+if (usuario) {
+  return res.status(400).json({ message: "Email ja cadastrado." });
+}
 ```
 
----
-
-### 4. Validação extra de campos extras no cadastro de usuário
-
-Notei que o teste de erro 400 para cadastro com campo extra está falhando, provavelmente porque seu `UsuarioSchema` permite campos extras.
-
-No `authController.js`, você usa o Zod para validar o usuário:
+Isso está correto, porém, no trecho anterior você tem um erro de digitação:
 
 ```js
-const UsuarioSchema = z.object({
-  nome: z.string().min(1, "O campo 'nome' é obrigatório."),
-  email: z.email(),
-  senha: z.string().min(8).regex(senhaRegex),
-});
+const senhaHash = await bycrypt.hash(senha, 8);
 ```
 
-Por padrão, o Zod permite campos extras. Para evitar isso e garantir que o usuário só envie exatamente os campos esperados, você deve usar `.strict()` no schema:
+Você escreveu `bycrypt` em vez de `bcrypt`. Isso gera um erro e impede que a função prossiga corretamente, fazendo com que o teste falhe.
+
+Além disso, no início da função você tem:
 
 ```js
-const UsuarioSchema = z.object({
-  nome: z.string().min(1, "O campo 'nome' é obrigatório."),
-  email: z.email(),
-  senha: z.string().min(8).regex(senhaRegex),
-}).strict();
+if ((!email || !senha, !nome)) {
+  return res.status(400).json({ message: "Email,Senha e nome obrigatorio." });
+}
 ```
 
-Assim, se o cliente enviar um campo extra, o Zod já rejeita com erro 400.
-
----
-
-### 5. Pequeno erro de digitação: `bcrypt` está escrito como `bycrypt`
-
-No seu `authController.js`, você importa o bcrypt com o nome errado:
+Aqui o uso do operador vírgula está incorreto. O correto seria usar `||` para verificar se algum campo está ausente:
 
 ```js
-const bycrypt = require("bcryptjs");
+if (!email || !senha || !nome) {
+  return res.status(400).json({ message: "Email, Senha e nome obrigatórios." });
+}
 ```
 
-E depois usa `bycrypt.hash` e `bycrypt.compare`.
+**Como corrigir:**
 
-Isso pode funcionar, mas é uma prática ruim e pode gerar confusão. O correto é:
+- Corrija o nome do pacote `bcrypt` na importação e uso dentro da função.
+- Corrija a condição para verificar campos obrigatórios.
+  
+Exemplo corrigido:
 
 ```js
 const bcrypt = require("bcryptjs");
-```
 
-E usar `bcrypt.hash` e `bcrypt.compare`.
+// ...
 
----
+async function cadastro(req, res, next) {
+  try {
+    const { email, senha, nome } = req.body;
 
-### 6. Status code incorreto na resposta do login quando usuário não encontrado
+    if (!email || !senha || !nome) {
+      return res.status(400).json({ message: "Email, Senha e nome obrigatórios." });
+    }
 
-No seu método `login` do `authController.js`, quando o usuário não é encontrado, você retorna status 404:
+    const parsed = UsuarioSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: parsed.error.issues[0].message });
+    }
 
-```js
-if (!usuario) {
-  return res.status(404).json({ message: "Usuario nao encontrado." });
-}
-```
+    const usuario = await usuariosRepository.findByEmail(email);
+    if (usuario) {
+      return res.status(400).json({ message: "Email já cadastrado." });
+    }
 
-Porém, o padrão de segurança e o esperado é que o login retorne **400 Bad Request** ou **401 Unauthorized** para credenciais inválidas, para evitar dar pistas sobre a existência do usuário.
+    const senhaHash = await bcrypt.hash(senha, 8);
 
-Sugiro alterar para:
+    const newUsuario = await usuariosRepository.create({
+      nome,
+      email,
+      senha: senhaHash,
+    });
 
-```js
-if (!usuario) {
-  return res.status(400).json({ message: "Credenciais inválidas." });
-}
-```
-
-Ou, se preferir, 401:
-
-```js
-if (!usuario) {
-  return res.status(401).json({ message: "Credenciais inválidas." });
-}
-```
-
-Isso ajuda a evitar vazamento de informações.
-
----
-
-### 7. Status code incorreto na resposta do middleware para token inválido
-
-No seu `authMiddleware.js`, quando o token é inválido, você retorna status 400:
-
-```js
-if (err) {
-  return res.status(400).json({ message: "Token de autenticação inválido." });
-}
-```
-
-O mais correto é retornar **401 Unauthorized** para indicar que a autenticação falhou:
-
-```js
-if (err) {
-  return res.status(401).json({ message: "Token de autenticação inválido." });
+    return res.status(201).json(newUsuario);
+  } catch (error) {
+    next(error);
+  }
 }
 ```
 
 ---
 
-### 8. Validação de ids no controllers de agentes e casos
+### 2. **Usuários: Erros 400 e 401 nos fluxos de login e autenticação**
 
-Alguns endpoints esperam que o id seja um número válido. No seu código, por exemplo no `agentesController.js`, no método `findById`, você não valida se o id é numérico antes de consultar o banco.
+Você também usou `bycrypt` na função `login`:
 
-Isso pode causar erros ou comportamento inesperado.
+```js
+const senhaMatch = await bycrypt.compare(senha, usuario.senha);
+```
 
-Sugiro validar o id antes, por exemplo:
+Isso deve ser `bcrypt.compare`. Esse erro impede a verificação correta da senha e gera falha no login e na autenticação.
+
+---
+
+### 3. **Agentes: Falha em criar, listar, buscar, atualizar e deletar agentes**
+
+Apesar de muitos testes de agentes passarem, alguns falharam devido a:
+
+- Falta de validação de ID numérico em rotas que recebem `id` como parâmetro.
+- Em `agentesRepository.js`, na função `findById`, você retorna `false` quando não encontra agente:
+
+```js
+if (findIndex.length === 0) {
+  return false;
+}
+```
+
+No controller, você verifica:
+
+```js
+if (!agente) {
+  return res.status(404).json({ message: "Agente inexistente" });
+}
+```
+
+Isso está correto, mas o problema pode estar em IDs inválidos, como strings não numéricas. Você deve validar o parâmetro `id` em todos os controllers que recebem ID para garantir que é um número válido e retornar 400 caso contrário.
+
+Exemplo de validação no controller `findById`:
 
 ```js
 const idNum = Number(req.params.id);
@@ -229,78 +161,131 @@ if (Number.isNaN(idNum)) {
 }
 ```
 
-E usar `idNum` para consultas.
+Você já fez isso em alguns controllers, mas precisa garantir que está presente em todos os pontos.
 
 ---
 
-### 9. Uso do método `Object.fromEntries(Object.entries(parsed.data))` desnecessário
+### 4. **Casos: Falha em criar e buscar casos com ID de agente inválido**
 
-Vi que você usa essa construção para limpar dados no `patch` de agentes e casos:
+No controller `casosController.js`, na função `create`, você verifica se o agente existe:
 
 ```js
-Object.fromEntries(Object.entries(parsed.data))
+const agente = await agentesRepository.findById(parsed.data.agente_id);
+if (!agente) {
+  return res.status(404).json({ message: "Agente inexistente" });
+}
 ```
 
-Mas `parsed.data` já é um objeto limpo. Essa conversão é redundante e pode ser removida para simplificar o código.
+Porém, não há validação para o formato do `agente_id`. Se alguém enviar um valor inválido (ex: string), o banco pode lançar erro ou a busca falhar.
 
----
+**Sugestão:** Valide o `agente_id` para ser um número inteiro positivo antes de consultar o banco.
 
-### 10. Pequena inconsistência no nome do parâmetro em `getAgente` do `casosController.js`
-
-No método `getAgente`, você usa `caso_id` no parâmetro, mas na rota está definido como `casos_id` (plural):
+Exemplo:
 
 ```js
-const { caso_id } = req.params;
-```
-
-Mas na rota:
-
-```js
-router.get("/:casos_id/agente", authMiddleware, casosController.getAgente);
-```
-
-Isso pode fazer com que `caso_id` seja `undefined`, causando erro.
-
-Corrija para:
-
-```js
-const { casos_id } = req.params;
-const casosIdNum = Number(casos_id);
+if (!Number.isInteger(parsed.data.agente_id) || parsed.data.agente_id <= 0) {
+  return res.status(400).json({ message: "agente_id inválido" });
+}
 ```
 
 ---
 
-## Recomendações de aprendizado 📚
+### 5. **Middleware de autenticação: Mensagem de erro e tratamento**
 
-- Sobre o problema da tabela de usuários e migrations, recomendo fortemente este vídeo para entender como criar e versionar migrations com Knex.js:  
-  https://www.youtube.com/watch?v=dXWy_aGCW1E
+Seu middleware `authMiddleware.js` está bem implementado, verifica o token, decodifica e injeta `req.user`. Porém, no catch você chama:
 
-- Para entender melhor o uso correto do bcrypt e JWT, e evitar erros comuns, veja este vídeo feito pelos meus criadores, que explica bem os conceitos básicos de autenticação segura:  
+```js
+return next(errorHandler(error));
+```
+
+Mas o `errorHandler` parece ser uma função que formata o erro, não um middleware. O correto é passar o erro para o próximo middleware de erro, ou fazer o tratamento dentro do middleware.
+
+Sugestão:
+
+```js
+function authMiddleware(req, res, next) {
+  try {
+    const tokenHeader = req.headers.authorization;
+    const token = tokenHeader && tokenHeader.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ message: "Token de autenticação obrigatório." });
+    }
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: "Token de autenticação inválido." });
+      }
+      req.user = decoded;
+      next();
+    });
+  } catch (error) {
+    next(error); // passa o erro para o middleware de erro padrão do Express
+  }
+}
+```
+
+---
+
+### 6. **Rotas e organização**
+
+No seu `server.js`:
+
+```js
+app.use(authRoutes);
+```
+
+O correto seria montar as rotas do auth com prefixo `/auth`, para manter consistência:
+
+```js
+app.use("/auth", authRoutes);
+```
+
+Assim, as rotas ficam como `/auth/register`, `/auth/login`, etc., conforme especificado.
+
+---
+
+### 7. **Documentação e INSTRUCTIONS.md**
+
+Sua documentação está muito boa e clara, parabéns! Só fique atento para manter a consistência da rota do auth, caso altere o `server.js` para usar o prefixo `/auth`.
+
+---
+
+## 📚 Recursos recomendados para você
+
+- Sobre autenticação e JWT, recomendo muito este vídeo feito pelos meus criadores, que explica os conceitos básicos e fundamentais da cibersegurança:  
   https://www.youtube.com/watch?v=Q4LQOfYwujk
 
-- Para garantir que suas validações com Zod sejam estritas e rejeitem campos extras, este vídeo sobre boas práticas com validação de dados pode ajudar:  
+- Para entender melhor o uso do JWT na prática, este vídeo é excelente:  
+  https://www.youtube.com/watch?v=keS0JWOypIU
+
+- Para o uso correto do bcrypt junto com JWT, este vídeo também é muito didático:  
+  https://www.youtube.com/watch?v=L04Ln97AwoY
+
+- Caso queira reforçar o entendimento sobre organização de projetos MVC em Node.js, veja este conteúdo:  
   https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s
 
----
-
-## Resumo rápido dos principais pontos para focar:
-
-- 🔑 **Corrigir nome da tabela de usuários para `usuarios`** e garantir que a migration crie essa tabela com o campo `email` único.  
-- 🔑 Implementar a função `down` da migration de usuários para permitir rollback.  
-- 🔑 Usar `.strict()` no schema do Zod para rejeitar campos extras no cadastro.  
-- 🔑 Corrigir o nome `bcrypt` na importação (está como `bycrypt`).  
-- 🔑 Ajustar os status codes para erros de autenticação e token inválido (usar 400/401 corretamente).  
-- 🔑 Validar os IDs recebidos nos parâmetros para garantir que sejam números válidos antes de consultar o banco.  
-- 🔑 Corrigir inconsistência no nome do parâmetro `casos_id` vs `caso_id` no método `getAgente`.  
+- Para aprofundar no uso do Knex, migrations e seeds, recomendo:  
+  https://www.youtube.com/watch?v=dXWy_aGCW1E  
+  https://www.youtube.com/watch?v=AJrK90D5el0&t=9s
 
 ---
 
-Patrick, você está no caminho certo! Com essas correções, sua API vai ficar muito mais robusta, confiável e alinhada com as boas práticas de segurança e desenvolvimento. Continue assim, aprendendo e aprimorando seu código, que o sucesso vem! 🚀✨
+## 📝 Resumo dos principais pontos para focar
 
-Se precisar de ajuda para entender algum ponto, estarei por aqui! 😉
+- **Corrigir o erro de digitação `bycrypt` para `bcrypt`** no `authController.js` para que hashing e comparação de senha funcionem corretamente.
+- **Corrigir a condição de validação de campos obrigatórios** no cadastro para usar `||` em vez de vírgula.
+- **Validar IDs numéricos em todos os controllers** que recebem parâmetros `id` para evitar erros e retornar status 400 quando inválidos.
+- **Validar `agente_id` enviado na criação e atualização de casos** para garantir que seja um número válido.
+- **Ajustar o middleware de autenticação para tratamento correto de erros**, evitando chamar `errorHandler` diretamente no middleware.
+- **Alterar o uso do `authRoutes` no `server.js` para usar o prefixo `/auth`**, deixando as rotas RESTful e organizadas.
+- **Testar novamente após as correções e garantir que os testes base passem 100%**.
 
-Um abraço virtual,  
-Seu Code Buddy 🤖💙
+---
+
+Patrick, você está no caminho certo! Esses ajustes vão destravar vários testes e deixar sua API robusta e segura. Continue praticando e aprimorando seu código, a segurança e a organização são pilares fundamentais para aplicações reais.
+
+Se precisar, volte aos vídeos indicados para reforçar os conceitos e não hesite em testar passo a passo. Estou aqui torcendo pelo seu sucesso! 🚀💪
+
+Abraços e continue firme! 👊✨
 
 > Caso queira tirar uma dúvida específica, entre em contato com o Chapter no nosso [discord](https://discord.gg/DryuHVnz).
 
