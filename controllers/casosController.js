@@ -1,10 +1,8 @@
 const express = require("express");
-const { validate: isUuid } = require("uuid");
 const { v4: uuidv4 } = require("uuid");
 const casosRepository = require("../repositories/casosRepository");
 const agentesRepository = require("../repositories/agentesRepository");
 const z = require("zod");
-const errorHandler = require("../utils/errorHandler");
 
 const enumStatus = ["aberto", "solucionado"];
 
@@ -13,11 +11,7 @@ const QueryParamsSchema = z.object({
     .string()
     .optional()
     .transform((val) => (val ? Number(val) : undefined)),
-  status: z
-    .enum(["aberto", "solucionado"], {
-      required_error: "Status é obrigatório.",
-    })
-    .optional(),
+  status: z.enum(enumStatus).optional(),
 });
 
 const searchQuerySchema = z.object({
@@ -29,7 +23,7 @@ const CasoSchema = z.object({
     .string({ required_error: "Titulo é obrigatório." })
     .min(1, "O campo 'titulo' é obrigatório."),
   descricao: z
-    .string({ required_error: "Descrição é obrigatório." })
+    .string({ required_error: "Descrição é obrigatória." })
     .min(1, "O campo 'descricao' é obrigatório."),
   status: z.enum(enumStatus, { required_error: "Status é obrigatório." }),
   agente_id: z
@@ -48,7 +42,7 @@ async function getAll(req, res, next) {
     }
     const { agente_id, status } = parsed.data;
 
-    if (agente_id !== undefined && !Number.isInteger(Number(agente_id))) {
+    if (agente_id !== undefined && !Number.isInteger(agente_id)) {
       return res
         .status(400)
         .json({ message: "O agente_id deve ser um número inteiro." });
@@ -92,17 +86,12 @@ async function create(req, res, next) {
       return res.status(400).json({ message: "agente_id inválido" });
     }
 
-    const agente = await agentesRepository.findById(
-      Number(parsed.data.agente_id)
-    );
+    const agente = await agentesRepository.findById(parsed.data.agente_id);
     if (!agente) {
       return res.status(404).json({ message: "Agente inexistente" });
     }
 
     const caso = await casosRepository.create(parsed.data);
-    if (!caso) {
-      return res.status(500).json({ message: "Erro ao criar caso." });
-    }
     return res.status(201).json(caso);
   } catch (error) {
     next(error);
@@ -111,13 +100,12 @@ async function create(req, res, next) {
 
 async function getById(req, res, next) {
   try {
-    const id = req.params.id;
     const idNum = Number(req.params.id);
     if (Number.isNaN(idNum)) {
       return res.status(400).json({ message: "ID inválido" });
     }
 
-    const caso = await casosRepository.findById(id);
+    const caso = await casosRepository.findById(idNum);
     if (!caso) {
       return res.status(404).json({ message: "Caso inexistente" });
     }
@@ -129,16 +117,9 @@ async function getById(req, res, next) {
 
 async function update(req, res, next) {
   try {
-    const { id } = req.params;
     const idNum = Number(req.params.id);
     if (Number.isNaN(idNum)) {
       return res.status(400).json({ message: "ID inválido" });
-    }
-    const parsed = CasoSchema.safeParse(req.body);
-
-    if (!parsed.success) {
-      const messages = parsed.error.issues.map((issue) => issue.message);
-      return res.status(400).json({ messages });
     }
 
     if ("id" in req.body) {
@@ -147,15 +128,18 @@ async function update(req, res, next) {
         .json({ message: "O campo 'id' nao pode ser alterado." });
     }
 
+    const parsed = CasoSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      return res.status(400).json({ messages });
+    }
+
     const agente = await agentesRepository.findById(parsed.data.agente_id);
     if (!agente) {
       return res.status(404).json({ message: "Agente inexistente" });
     }
 
-    const casosUpdated = await casosRepository.update(
-      id,
-      Object.fromEntries(Object.entries(parsed.data))
-    );
+    const casosUpdated = await casosRepository.update(idNum, parsed.data);
     if (!casosUpdated) {
       return res.status(404).json({ message: "Caso inexistente" });
     }
@@ -167,16 +151,15 @@ async function update(req, res, next) {
 
 async function deleteCaso(req, res, next) {
   try {
-    const { id } = req.params;
     const idNum = Number(req.params.id);
     if (Number.isNaN(idNum)) {
       return res.status(400).json({ message: "ID inválido" });
     }
-    const casosDeleted = await casosRepository.deleteCaso(id);
+    const casosDeleted = await casosRepository.deleteCaso(idNum);
     if (!casosDeleted) {
       return res.status(404).json({ message: "Caso inexistente" });
     }
-    return res.status(204).json();
+    return res.status(204).send(); // corpo vazio
   } catch (error) {
     next(error);
   }
@@ -184,16 +167,9 @@ async function deleteCaso(req, res, next) {
 
 async function patch(req, res, next) {
   try {
-    const { id } = req.params;
     const idNum = Number(req.params.id);
     if (Number.isNaN(idNum)) {
       return res.status(400).json({ message: "ID inválido" });
-    }
-
-    const parsed = CasoPartial.safeParse(req.body);
-    if (!parsed.success) {
-      const messages = parsed.error.issues.map((issue) => issue.message);
-      return res.status(400).json({ messages });
     }
 
     if ("id" in req.body) {
@@ -202,22 +178,23 @@ async function patch(req, res, next) {
         .json({ message: "O campo 'id' nao pode ser alterado." });
     }
 
+    const parsed = CasoPartial.safeParse(req.body);
+    if (!parsed.success) {
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      return res.status(400).json({ messages });
+    }
+
     if (parsed.data.agente_id !== undefined) {
-      const agenteIdNum = Number(parsed.data.agente_id);
-      if (Number.isNaN(agenteIdNum)) {
+      if (!Number.isInteger(parsed.data.agente_id)) {
         return res.status(400).json({ message: "agente_id inválido" });
       }
-
-      const agente = await agentesRepository.findById(agenteIdNum);
+      const agente = await agentesRepository.findById(parsed.data.agente_id);
       if (!agente) {
         return res.status(404).json({ message: "Agente inexistente" });
       }
     }
 
-    const casosUpdated = await casosRepository.update(
-      id,
-      Object.fromEntries(Object.entries(parsed.data))
-    );
+    const casosUpdated = await casosRepository.update(idNum, parsed.data);
     if (!casosUpdated) {
       return res.status(404).json({ message: "Caso inexistente" });
     }
@@ -229,8 +206,7 @@ async function patch(req, res, next) {
 
 async function getAgente(req, res, next) {
   try {
-    const { casos_id } = req.params;
-    const casosIdNum = Number(casos_id);
+    const casosIdNum = Number(req.params.casos_id);
     if (Number.isNaN(casosIdNum)) {
       return res.status(400).json({ message: "Parâmetro inválido" });
     }
@@ -249,6 +225,7 @@ async function getAgente(req, res, next) {
     next(error);
   }
 }
+
 module.exports = {
   getAll,
   search,

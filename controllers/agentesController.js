@@ -1,7 +1,6 @@
 const { z } = require("zod");
 const express = require("express");
 const agentesRepository = require("../repositories/agentesRepository");
-const errorHandler = require("../utils/errorHandler");
 const casosRepository = require("../repositories/casosRepository");
 
 const AgenteSchema = z.object({
@@ -22,6 +21,7 @@ const AgenteSchema = z.object({
     }),
   }),
 });
+
 const AgentePartial = AgenteSchema.partial().strict();
 
 const querySchema = z.object({
@@ -38,11 +38,8 @@ async function findAll(req, res, next) {
     }
 
     const { cargo, sort } = parsed.data;
+    const agentes = await agentesRepository.findAll({ cargo, sort });
 
-    const agentes = await agentesRepository.findAll({
-      cargo,
-      sort,
-    });
     return res.status(200).json(agentes);
   } catch (error) {
     next(error);
@@ -55,10 +52,12 @@ async function findById(req, res, next) {
     if (Number.isNaN(idNum)) {
       return res.status(400).json({ message: "ID inválido" });
     }
+
     const agente = await agentesRepository.findById(idNum);
     if (!agente) {
       return res.status(404).json({ message: "Agente inexistente" });
     }
+
     return res.status(200).json(agente);
   } catch (error) {
     next(error);
@@ -74,9 +73,6 @@ async function create(req, res, next) {
     }
 
     const agente = await agentesRepository.create(parsed.data);
-    if (!agente) {
-      return res.status(500).json({ message: "Erro ao criar agente." });
-    }
     return res.status(201).json(agente);
   } catch (error) {
     next(error);
@@ -85,30 +81,28 @@ async function create(req, res, next) {
 
 async function deleteAgente(req, res, next) {
   try {
-    const { id } = req.params;
     const idNum = Number(req.params.id);
     if (Number.isNaN(idNum)) {
       return res.status(400).json({ message: "ID inválido" });
     }
 
-    const inCase = await casosRepository.deleteByAgente(idNum);
-    if (!inCase) {
-      console.log("Agente não tem casos");
-    }
+    // Deleta casos vinculados, se houver
+    await casosRepository.deleteByAgente(idNum);
+
+    // Agora tenta deletar o agente
     const deleted = await agentesRepository.deleteAgente(idNum);
     if (!deleted) {
       return res.status(404).json({ message: "Agente inexistente" });
     }
+
     return res.status(204).send();
   } catch (error) {
-    console.log(error);
     next(error);
   }
 }
 
 async function updateAgente(req, res, next) {
   try {
-    const { id } = req.params;
     const idNum = Number(req.params.id);
     if (Number.isNaN(idNum)) {
       return res.status(400).json({ message: "ID inválido" });
@@ -117,8 +111,9 @@ async function updateAgente(req, res, next) {
     if ("id" in req.body) {
       return res
         .status(400)
-        .json({ message: "O campo 'id' nao pode ser alterado." });
+        .json({ message: "O campo 'id' não pode ser alterado." });
     }
+
     const parsed = AgenteSchema.safeParse(req.body);
     if (!parsed.success) {
       const messages = parsed.error.issues.map((issue) => issue.message);
@@ -130,7 +125,7 @@ async function updateAgente(req, res, next) {
       parsed.data
     );
 
-    if (agenteUpdated === null) {
+    if (!agenteUpdated) {
       return res
         .status(404)
         .json({ message: "Agente não atualizado/não encontrado" });
@@ -144,7 +139,6 @@ async function updateAgente(req, res, next) {
 
 async function patch(req, res, next) {
   try {
-    const { id } = req.params;
     const idNum = Number(req.params.id);
     if (Number.isNaN(idNum)) {
       return res.status(400).json({ message: "ID inválido" });
@@ -153,7 +147,7 @@ async function patch(req, res, next) {
     if ("id" in req.body) {
       return res
         .status(400)
-        .json({ message: "O campo 'id' nao pode ser alterado." });
+        .json({ message: "O campo 'id' não pode ser alterado." });
     }
 
     const parsed = AgentePartial.safeParse(req.body);
@@ -167,7 +161,7 @@ async function patch(req, res, next) {
       parsed.data
     );
 
-    if (agenteUpdated === null) {
+    if (!agenteUpdated) {
       return res
         .status(404)
         .json({ message: "Agente não atualizado/não encontrado" });

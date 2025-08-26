@@ -4,19 +4,21 @@ async function getAll({ agente_id, status } = {}) {
   try {
     let search = db.select("*").from("casos");
     if (agente_id !== undefined) {
-      search = search.where({ agente_id: agente_id });
+      search = search.where({ agente_id: Number(agente_id) });
     }
     if (status) {
-      search = search.where({ status: status });
+      search = search.where({ status });
     }
     return await search;
   } catch (error) {
-    return error;
+    console.error(error);
+    throw error;
   }
 }
+
 async function search(q) {
   try {
-    const query = db
+    const query = await db
       .select("*")
       .from("casos")
       .where(function () {
@@ -26,13 +28,11 @@ async function search(q) {
           `%${q}%`
         );
       });
-    if (!query) {
-      return false;
-    }
-    return await query;
+
+    return query.length > 0 ? query : [];
   } catch (error) {
-    console.log(error);
-    return error;
+    console.error(error);
+    throw error;
   }
 }
 
@@ -41,20 +41,18 @@ async function create(caso) {
     const created = await db("casos").insert(caso).returning("*");
     return created[0];
   } catch (error) {
-    console.log(error);
-    return error;
+    console.error(error);
+    throw error;
   }
 }
+
 async function findById(id) {
   try {
-    const findIndex = await db("casos").where({ id: Number(id) });
-    if (findIndex.length === 0) {
-      return false;
-    }
-    return findIndex[0];
+    const result = await db("casos").where({ id: Number(id) });
+    return result.length > 0 ? result[0] : null;
   } catch (error) {
-    console.log(error);
-    return error;
+    console.error(error);
+    throw error;
   }
 }
 
@@ -63,13 +61,10 @@ async function update(id, fieldsToUpdate) {
     const updated = await db("casos")
       .where({ id: Number(id) })
       .update(fieldsToUpdate, ["*"]);
-    if (!updated || updated.length === 0) {
-      return false;
-    }
-    return updated[0];
+    return updated && updated.length > 0 ? updated[0] : null;
   } catch (error) {
-    console.log(error);
-    return error;
+    console.error(error);
+    throw error;
   }
 }
 
@@ -78,20 +73,22 @@ async function deleteCaso(id) {
     const deleted = await db("casos")
       .where({ id: Number(id) })
       .del();
-    return deleted > 0;
+    return deleted > 0 ? true : null;
   } catch (error) {
-    console.log(error);
-    return error;
+    console.error(error);
+    throw error;
   }
 }
 
 async function deleteByAgente(id) {
   try {
-    const deleted = await db("casos").where({ agente_id: id }).del();
-    return deleted > 0;
+    const deleted = await db("casos")
+      .where({ agente_id: Number(id) })
+      .del();
+    return deleted > 0 ? true : null;
   } catch (error) {
-    console.log(error);
-    return error;
+    console.error(error);
+    throw error;
   }
 }
 
