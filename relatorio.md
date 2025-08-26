@@ -1,320 +1,188 @@
 <sup>Esse é um feedback gerado por IA, ele pode conter erros.</sup>
 
-Você tem 2 créditos restantes para usar o sistema de feedback AI.
+Você tem 1 créditos restantes para usar o sistema de feedback AI.
 
 # Feedback para PatrickStar-code:
 
 Nota final: **50.5/100**
 
-```markdown
-# Olá, PatrickStar-code! 👋🚀
+# Feedback para PatrickStar-code 🚀
 
-Antes de tudo, parabéns pelo esforço e dedicação em avançar na construção dessa API super importante para o Departamento de Polícia! 🎉 Você conseguiu implementar com sucesso a parte de **usuários** — cadastro, login, logout e exclusão — com validações, hashing de senha e JWT funcionando corretamente. Isso é um baita passo e mostra que você entendeu bem os conceitos de segurança e autenticação! 👏👏
+Olá, Patrick! Primeiramente, parabéns por todo o esforço e dedicação que você colocou nesse desafio! 🎉 Você conseguiu implementar várias funcionalidades importantes, especialmente na parte de usuários: o registro, login, logout e exclusão estão funcionando muito bem, com validações robustas e segurança com bcrypt e JWT. Isso é fundamental e você mandou super bem! 👏
 
----
-
-# 🎯 O que foi entregue com sucesso (Vitórias para comemorar! 🥳)
-
-- Implementação da tabela `usuarios` com migration funcionando.
-- Cadastro de usuários com validação rigorosa da senha e hashing via bcrypt.
-- Login gerando JWT com expiração, e retorno correto de token.
-- Middleware de autenticação JWT que protege as rotas.
-- Logout e exclusão de usuários funcionando com os status codes esperados.
-- Proteção das rotas `/agentes` e `/casos` com middleware.
-- Documentação clara no `INSTRUCTIONS.md` explicando registro, login e uso do token.
-- Tratamento de erros com mensagens customizadas.
-- Estrutura do projeto organizada conforme esperado: controllers, repositories, routes, middlewares, db, etc.
-
-Além disso, você acertou vários testes bônus, como filtros de casos, busca por agente responsável, e endpoints extras — isso mostra que você foi além do básico! 🌟
+Além disso, você aplicou corretamente o middleware de autenticação nas rotas sensíveis, garantindo que elas estejam protegidas, o que é um grande passo para uma API segura. Também ficou claro que você estruturou seu projeto seguindo a arquitetura MVC, separando controllers, repositories, rotas e middlewares, o que facilita a manutenção e escalabilidade do código.
 
 ---
 
-# ⚠️ Pontos Críticos para Melhorar — Análise dos Testes que Falharam
+## Análise dos testes que falharam e pontos de melhoria
 
-Apesar das conquistas, a nota final indica que várias funcionalidades essenciais relacionadas a **agentes** e **casos** não passaram nos testes base. Isso significa que os testes obrigatórios para o funcionamento da API REST estão com problemas. Vamos destrinchar os principais motivos:
+### 1. Testes base de AGENTS e CASES falharam em massa
+
+Você teve falhas em todos os testes relacionados às operações CRUD dos agentes e casos, incluindo criação, listagem, busca por ID, atualização (PUT e PATCH) e exclusão. Isso indica que a camada de agentes e casos está com problemas de funcionamento ou integração.
 
 ---
 
-## 1. Falha geral nos testes de Agentes (CRUD com autenticação)
+### Causa raiz provável: Falhas nas respostas HTTP e/ou no tratamento de erros e dados
 
-### O que os testes esperam:
-- Criar agentes com status 201 e retorno correto.
-- Listar todos os agentes com status 200 e dados corretos.
-- Buscar agente por ID com status 200.
-- Atualizar agente (PUT e PATCH) com status 200.
-- Deletar agente com status 204.
-- Retornar erros 400 para payloads inválidos.
-- Retornar erros 404 para agentes inexistentes.
-- Retornar erro 401 para requisições sem token JWT.
+Vamos destrinchar o que pode estar acontecendo:
 
-### Onde o código pode estar falhando:
+- **Status codes e respostas incorretas ou inconsistentes:**  
+  Os testes esperam status codes e formatos muito específicos, por exemplo, status 201 com o objeto criado, status 204 com corpo vazio para deleção, status 400 para payloads inválidos, etc.  
+  Revise nas funções dos controllers `agentesController.js` e `casosController.js` se você está retornando exatamente esses códigos e formatos.
 
-- **Possível problema no tratamento de erros e retorno de status:**  
-  No `agentesController.js`, você usa `return false` em alguns repositórios para erros, mas no controller isso pode não estar sendo tratado corretamente para enviar o status esperado. Por exemplo, no método `findById` do repositório, retorna `false` se não encontrar, mas no controller você verifica `if (!agente)` e retorna 404, o que está correto. Então, isso parece OK.
+- **Validação e parsing dos parâmetros:**  
+  Em `casosController.js`, por exemplo, notei que na função `getById` você converte o ID para número (`Number(req.params.id)`), mas ao buscar no repositório chama `casosRepository.findById(id)` passando o ID original como string. Isso pode causar falha na consulta, pois o banco espera número.  
+  O mesmo acontece no agente: às vezes você converte para `Number`, outras vezes não. Essa inconsistência pode estar causando retornos nulos ou vazios, e consequentemente status 404.
 
-- **Verificação do ID inválido:**  
-  Você converte o ID para número e verifica `Number.isNaN`, o que está certo.  
+- **Retorno do repositório:**  
+  Nos repositórios, por exemplo em `agentesRepository.findById`, você retorna `null` quando não encontra, mas em `casosRepository.findById` você retorna `false`. Essa diferença pode causar confusão no controller, que espera um valor falso para decidir o status 404.  
+  Recomendo padronizar para sempre retornar `null` ou `false` e tratar isso adequadamente no controller.
 
-- **Middleware de autenticação:**  
-  Está aplicado em todas as rotas de agentes, o que é correto.
+- **Problemas no middleware de autenticação:**  
+  Os testes indicam que você passou nos testes de 401 sem token, então isso está ok.
 
-- **Possível problema no método `updateAgente` do repositório:**  
-  Ele está retornando `false` ou `false` quando não encontra, mas no controller você espera `null` para não encontrado. No controller, no método `updateAgente` você verifica:
+---
 
-  ```js
-  if (agenteUpdated === null) {
-    return res.status(404).json({ message: "Agente não atualizado/não encontrado" });
-  }
-  ```
-
-  Mas no repositório, você retorna `false` e não `null`:
-
-  ```js
-  if (!updateAgente || updateAgente.length === 0) {
-    return false;
-  }
-  ```
-
-  Isso pode causar um problema, pois o controller espera `null` e pode não entrar corretamente na condição de erro.
-
-- **No método `deleteAgente` no controller:**  
-  Você chama `casosRepository.deleteByAgente(idNum)` e verifica se `!inCase`, mas esse método retorna `true` ou `false` indicando se deletou algum caso. Se não tiver casos, retorna `false` e você só loga "Agente não tem casos". Isso não impede a exclusão, o que está correto.
-
-- **Possível problema no PUT e PATCH:**  
-  O schema `AgenteSchema` exige `cargo` como string, mas não valida se o cargo é um dos valores esperados (`inspetor`, `delegado`, `agente`). No swagger, o enum inclui esses valores, mas no Zod não há enumeração. Isso pode fazer com que testes que enviam cargo inválido passem ou falhem de forma inesperada.
-
-- **No arquivo `routes/agentesRoutes.js`:**  
-  O swagger indica que o campo `cargo` deve ser enum com valores `[inspetor, delegado, agente]`, mas no controller não há essa validação. Isso pode causar problemas nos testes que esperam validação estrita.
-
-### Como corrigir:
-
-- No `agentesController.js`, ajuste o schema para validar `cargo` como enum:
+### Exemplo de melhoria no controller `casosController.js` para o método `getById`:
 
 ```js
-const AgenteSchema = z.object({
-  nome: z.string().min(1, "O campo 'nome' não pode ser vazio."),
-  dataDeIncorporacao: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, {
-      message: "O campo 'dataDeIncorporacao' deve ser no formato 'YYYY-MM-DD'.",
-    })
-    .refine((dateStr) => {
-      const date = new Date(dateStr);
-      const now = new Date();
-      return date <= now;
-    }, "A data de incorporação não pode ser no futuro."),
-  cargo: z.enum(["inspetor", "delegado", "agente"], {
-    errorMap: () => ({ message: "Cargo inválido. Deve ser 'inspetor', 'delegado' ou 'agente'." }),
-  }),
-});
+async function getById(req, res, next) {
+  try {
+    const idNum = Number(req.params.id);
+    if (Number.isNaN(idNum)) {
+      return res.status(400).json({ message: "ID inválido" });
+    }
+
+    // Sempre passar número para o repositório
+    const caso = await casosRepository.findById(idNum);
+    if (!caso) {
+      return res.status(404).json({ message: "Caso inexistente" });
+    }
+    return res.status(200).json(caso);
+  } catch (error) {
+    next(error);
+  }
+}
 ```
 
-- No repositório `agentesRepository.js`, padronize o retorno para `null` quando não encontrar, para alinhar com o controller:
+Note que você já faz isso em alguns lugares, mas em outros não. Esse tipo de inconsistência pode gerar falhas.
+
+---
+
+### 2. Validação dos dados e uso do Zod
+
+Você fez um ótimo uso do Zod para validar os dados de entrada, parabéns! Porém, em alguns pontos, como nos controllers de casos e agentes, a validação pode estar muito rígida ou não estar tratando todos os casos, especialmente em atualizações parciais.
+
+Por exemplo, no método `update` do `casosController.js`, você faz:
+
+```js
+const parsed = CasoSchema.safeParse(req.body);
+if (!parsed.success) {
+  const messages = parsed.error.issues.map((issue) => issue.message);
+  return res.status(400).json({ messages });
+}
+```
+
+Mas você não verifica se o campo `id` está presente antes da validação, o que pode causar erros se o cliente enviar o campo `id` para alteração, o que não é permitido.
+
+Sugestão: faça a checagem do campo `id` antes da validação, para evitar mensagens confusas.
+
+---
+
+### 3. Atualização no repositório para retornar `null` ao invés de `false`
+
+No `casosRepository.js`:
 
 ```js
 async function findById(id) {
   try {
-    const findIndex = await db("agentes").where({ id: Number(id) });
+    const findIndex = await db("casos").where({ id: Number(id) });
     if (findIndex.length === 0) {
-      return null; // alterar de false para null
+      return null; // padronizar para null
     }
     return findIndex[0];
   } catch (error) {
-    return null; // alterar de false para null
+    console.log(error);
+    return error;
   }
 }
 ```
 
-Faça o mesmo para outros métodos que retornam `false` para "não encontrado".
-
-- Além disso, no controller `updateAgente` e `patch`, verifique se o retorno do repositório é `null` para enviar 404.
-
-- Confirme que no `routes/agentesRoutes.js`, todas as rotas que precisam de autenticação estão protegidas com `authMiddleware` (que pelo seu código, parece estar correto).
+E no `casosController.js` trate `null` como "não encontrado".
 
 ---
 
-## 2. Falha nos testes de Casos (CRUD e filtros)
+### 4. Sobre a estrutura de diretórios
 
-### O que os testes esperam:
+Sua estrutura está muito bem organizada e condiz com o esperado! Você tem:
 
-- Criar casos com status 201 e dados corretos.
-- Listar todos os casos com status 200.
-- Buscar caso por ID com status 200.
-- Atualizar caso (PUT e PATCH) com status 200.
-- Deletar caso com status 204.
-- Validar payloads e IDs corretamente.
-- Filtrar casos por `status` e `agente_id`.
-- Buscar casos por keywords no título e descrição.
-- Buscar agente responsável por caso.
-- Retornar erros 400, 404 e 401 conforme esperado.
+- `routes/` com as rotas separadas para agentes, casos e auth  
+- `controllers/` com os controladores correspondentes  
+- `repositories/` para acesso ao banco  
+- `middlewares/` com o middleware de autenticação  
+- `db/` com migrations, seeds e configuração do knex  
+- `utils/` para tratamento de erros
 
-### Onde o código pode estar falhando:
-
-- No controller `getById`, você faz:
-
-```js
-const caso = await casosRepository.findById(id);
-if (!caso) {
-  return res.status(404).json({ message: "Caso inexistente" });
-}
-```
-
-Mas no repositório `findById` você retorna `false` para não encontrado, e no controller verifica `!caso`. Isso funciona, mas melhor uniformizar para `null`.
-
-- Na validação do `agente_id` no método `create` e `patch`, você verifica se é número inteiro e se o agente existe, o que está correto.
-
-- No repositório `casosRepository.js`, o método `update` retorna `false` se não atualizou, mas no controller você verifica `if (!casosUpdated)`, o que funciona.
-
-- No método `deleteCaso` do controller, você retorna `res.status(204).json()`. É melhor usar `res.status(204).send()` para evitar corpo na resposta.
-
-- No filtro por `status` e `agente_id` em `getAll`, você faz:
-
-```js
-if (agente_id !== undefined) {
-  search = search.where({ agente_id: agente_id });
-}
-if (status) {
-  search = search.where({ status: status });
-}
-```
-
-Isso está correto, mas no schema `QueryParamsSchema` você usa:
-
-```js
-const QueryParamsSchema = z.object({
-  agente_id: z.number().optional(),
-  status: z.enum(["aberto", "solucionado"], {
-    required_error: "Status é obrigatório.",
-  }).optional(),
-});
-```
-
-Porém, o query string vem como string, e o Zod não converte automaticamente para número. Isso pode causar falha na validação. Você pode usar `.transform` para converter `agente_id` para número antes da validação, ou validar como string e converter depois.
-
-- No método `getById` do controller, você usa `const idNum = Number(req.params.id);` e depois chama `casosRepository.findById(id)` (passando a string original). No repositório, você faz `where({ id: Number(id) })`. Isso funciona, mas melhor passar `idNum` para evitar confusão.
-
-- No método `getAgente`, você converte `casos_id` para número e verifica, o que está correto.
-
-### Como corrigir:
-
-- No `casosController.js`, ajuste o `agente_id` no schema para aceitar string e converter para número:
-
-```js
-const QueryParamsSchema = z.object({
-  agente_id: z.string().optional().transform((val) => (val ? Number(val) : undefined)),
-  status: z.enum(["aberto", "solucionado"]).optional(),
-});
-```
-
-- No método `getById`, passe o número para o repositório:
-
-```js
-const caso = await casosRepository.findById(idNum);
-```
-
-- No método `deleteCaso`, envie resposta sem corpo:
-
-```js
-return res.status(204).send();
-```
-
-- Padronize retornos `null` no repositório para "não encontrado", para ficar consistente com controllers.
+Isso é excelente e demonstra um bom domínio da arquitetura MVC! 🎯
 
 ---
 
-## 3. Testes de Autorização (401) passaram, mas atenção!
+### 5. Pequenas melhorias no código do authController.js
 
-Você protegeu as rotas com middleware JWT, e os testes que verificam acesso sem token retornam 401, o que é ótimo! 👍 Só fique atento para que o middleware seja aplicado em todas as rotas sensíveis.
+Na função `login`, você retorna o token com a chave `"access_token"`, mas no enunciado e instruções o esperado é `"acess_token"` (sem o "c" duplo). Esse detalhe pode causar falha nos testes que esperam a chave exata.
+
+Exemplo:
+
+```js
+return res.status(200).json({ acess_token: token });
+```
+
+Essa diferença de nomenclatura pode parecer pequena, mas os testes automatizados são bastante rigorosos quanto a isso.
 
 ---
 
-## 4. Estrutura do projeto
+### 6. Sugestão para melhorar a segurança do logout
 
-Sua estrutura está muito boa e de acordo com o esperado! 👏
-
-```
-📦 SEU-REPOSITÓRIO
-│
-├── package.json
-├── server.js
-├── .env
-├── knexfile.js
-├── INSTRUCTIONS.md
-│
-├── db/
-│ ├── migrations/
-│ ├── seeds/
-│ └── db.js
-│
-├── routes/
-│ ├── agentesRoutes.js
-│ ├── casosRoutes.js
-│ └── authRoutes.js
-│
-├── controllers/
-│ ├── agentesController.js
-│ ├── casosController.js
-│ └── authController.js
-│
-├── repositories/
-│ ├── agentesRepository.js
-│ ├── casosRepository.js
-│ └── usuariosRepository.js
-│
-├── middlewares/
-│ └── authMiddleware.js
-│
-├── utils/
-│ └── errorHandler.js
-```
+Atualmente, seu logout apenas retorna uma mensagem, mas o JWT continua válido até expirar. Para um logout efetivo, seria ideal implementar blacklist de tokens ou refresh tokens, mas isso é um bônus e não obrigatório.
 
 ---
 
-# 📚 Recursos para você aprimorar ainda mais:
+## Recursos recomendados para você aprofundar e corrigir os pontos acima:
 
-- Para entender melhor o uso do **Knex.js** e garantir que as queries estejam corretas:  
+- Para entender melhor sobre validação e uso do Zod:  
+  https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s (Arquitetura MVC e boas práticas)
+
+- Para aprofundar em autenticação JWT e bcrypt (muito importante para a segurança):  
+  - https://www.youtube.com/watch?v=Q4LQOfYwujk (conceitos básicos de autenticação e segurança, feito pelos meus criadores)  
+  - https://www.youtube.com/watch?v=keS0JWOypIU (JWT na prática)  
+  - https://www.youtube.com/watch?v=L04Ln97AwoY (JWT + bcrypt)
+
+- Para manipulação e query com Knex.js, que pode ajudar a evitar erros no repositório:  
   https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s
 
-- Para aprofundar no uso de **JWT** e autenticação segura:  
-  https://www.youtube.com/watch?v=Q4LQOfYwujk (Esse vídeo, feito pelos meus criadores, fala muito bem sobre os conceitos básicos e fundamentais da cibersegurança.)
+---
 
-- Para entender como usar **bcrypt** e **JWT** juntos na prática:  
-  https://www.youtube.com/watch?v=L04Ln97AwoY
+## Resumo dos principais pontos para focar:
 
-- Para organizar melhor seu projeto com arquitetura MVC:  
-  https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s
+- ✅ Corrija inconsistências no tratamento dos IDs (usar sempre `Number(id)` antes de consultar o banco)  
+- ✅ Padronize os retornos dos repositórios para `null` quando não encontrar registros  
+- ✅ Ajuste os status codes e respostas dos controllers para atender exatamente ao esperado (201, 204, 400, 404, etc)  
+- ✅ Atenção à nomenclatura correta do token no login (`acess_token` e não `access_token`)  
+- ✅ Verifique se o campo `id` está sendo protegido contra alterações em todas as rotas PUT/PATCH  
+- ✅ Continue usando Zod para validação, mas trate os casos de campo extra ou inválido antes da validação para mensagens mais claras  
+- ✅ Mantenha a estrutura do projeto que está ótima!  
+- ✅ Para o logout, pense em estratégias para invalidar tokens (bônus)  
 
 ---
 
-# 📝 Resumo dos principais pontos para focar:
+Patrick, você está muito próximo de ter essa API funcionando perfeitamente! 💪 Seu código mostra que você entende os conceitos principais e já aplicou vários deles com qualidade. Com esses ajustes finos e atenção aos detalhes, você vai conseguir passar todos os testes e entregar um projeto profissional.
 
-- **Validação de dados:** Use enums para validar o campo `cargo` dos agentes, garantindo que só valores válidos sejam aceitos.
+Continue firme, revisando seu código com calma, testando cada endpoint e validando as respostas conforme o esperado. Estou aqui torcendo pelo seu sucesso! 🚀
 
-- **Consistência nos retornos dos repositórios:** Use `null` para indicar "não encontrado" em vez de `false`. Isso ajuda o controller a identificar corretamente e retornar status 404.
+Qualquer dúvida, só chamar! 😉
 
-- **Conversão e validação de query params:** Como o `agente_id` vem como string na query, converta para número antes da validação para evitar erros.
-
-- **Padronize as respostas HTTP:** Use `res.status(204).send()` para respostas sem corpo (DELETE).
-
-- **Verifique se o middleware de autenticação está aplicado em todas as rotas sensíveis** (pelo seu código, já está).
-
-- **Ajuste os schemas Zod para refletir exatamente os requisitos do swagger e dos testes.**
-
----
-
-# PatrickStar-code, você está no caminho certo! 🚀
-
-Seu código mostra que você entende os conceitos e já aplicou muitos deles com qualidade. Com esses ajustes, você vai destravar todos os testes base e garantir uma API robusta, segura e profissional. Continue nessa pegada, sempre buscando entender profundamente cada requisito e como o código responde a eles. Qualquer dúvida, estarei aqui para ajudar! 😉
-
-Boa sorte e bora codar! 💻🔥
-
----
-
-Se quiser, posso ajudar a montar esses ajustes no código para você! É só pedir. 😉
-
-Abraços,
+Um abraço,  
 Seu Code Buddy 🤖✨
-```
 
 > Caso queira tirar uma dúvida específica, entre em contato com o Chapter no nosso [discord](https://discord.gg/DryuHVnz).
 
