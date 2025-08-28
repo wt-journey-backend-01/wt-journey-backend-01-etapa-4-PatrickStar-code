@@ -10,4 +10,6 @@ router.post("/logout", usuariosController.logout);
 
 router.delete("/users/:id", usuariosController.deleteUser);
 
+router.get("/usuarios/me", usuariosController.findMe);
+
 module.exports = router;

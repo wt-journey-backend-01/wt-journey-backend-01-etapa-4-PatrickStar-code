@@ -35,4 +35,22 @@ async function deleteUser(id) {
   }
 }
 
-module.exports = { create, findByEmail, deleteUser };
+async function findById(id) {
+  try {
+    const findIndex = await db("usuarios").where({ id: Number(id) });
+    if (findIndex.length === 0) {
+      return null;
+    }
+
+    const user = {
+      id: findIndex[0].id,
+      nome: findIndex[0].nome,
+      email: findIndex[0].email,
+    };
+    return user;
+  } catch (error) {
+    return error;
+  }
+}
+
+module.exports = { create, findByEmail, deleteUser, findById };

@@ -67,6 +67,39 @@ async function cadastro(req, res, next) {
   }
 }
 
+async function findMe(req, res, next) {
+  try {
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+
+    if (!token) {
+      return res
+        .status(401)
+        .json({ message: "Token de autenticação obrigatório." });
+    }
+
+    // Verifica e decodifica o token de forma síncrona
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res
+        .status(401)
+        .json({ message: "Token de autenticação inválido." });
+    }
+
+    // Busca usuário
+    const usuario = await usuariosRepository.findById(decoded.id);
+    if (!usuario) {
+      return res.status(404).json({ message: "Usuário não encontrado." });
+    }
+
+    return res.status(200).json(usuario);
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function login(req, res, next) {
   try {
     const { email, senha } = req.body;
@@ -124,4 +157,5 @@ module.exports = {
   login,
   deleteUser,
   logout,
+  findMe,
 };
