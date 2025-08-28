@@ -1,6 +1,6 @@
 <sup>Esse é um feedback gerado por IA, ele pode conter erros.</sup>
 
-Você tem 0 créditos restantes para usar o sistema de feedback AI.
+Você tem 9 créditos restantes para usar o sistema de feedback AI.
 
 # Feedback para PatrickStar-code:
 
@@ -9,34 +9,44 @@ Nota final: **50.5/100**
 ```markdown
 # Olá, PatrickStar-code! 👋🚀
 
-Primeiramente, parabéns pelo esforço e por chegar até aqui! Você já avançou bastante implementando toda a estrutura de autenticação com JWT, hashing de senhas com bcrypt e protegendo as rotas com middleware. Isso é fundamental para uma API segura e profissional! 🎉
-
-Além disso, você conseguiu fazer passar todos os testes base relacionados a usuários (registro, login, logout, exclusão) e a proteção das rotas com JWT — isso mostra que a parte de **segurança e autenticação** está muito bem encaminhada! 👏👏
+Primeiramente, parabéns pelo esforço e pela entrega até aqui! 🎉 Você avançou bastante implementando a autenticação com JWT, proteção das rotas, hashing de senhas com bcrypt e a estrutura do projeto está bem organizada! Isso é fundamental para construir APIs seguras e profissionais. Além disso, seus testes de usuários passaram com sucesso, incluindo a criação, login, logout e deleção — um baita mérito! 👏👏
 
 ---
 
-# Análise Geral dos Testes que Falharam
+## 🎯 Pontos Positivos que Merecem Destaque
 
-Você teve **diversos testes falhando relacionados à manipulação dos agentes e casos**, principalmente nos endpoints de:
-
-- Criação, listagem, busca, atualização (PUT e PATCH) e exclusão de agentes
-- Criação, listagem, busca, atualização (PUT e PATCH) e exclusão de casos
-
-Esses testes são cruciais porque são a espinha dorsal da API para o Departamento de Polícia, e a falha neles impacta diretamente a funcionalidade principal do sistema.
+- **Autenticação JWT funcionando:** O login retorna token com expiração, e o middleware valida o token corretamente, bloqueando acesso sem autorização.
+- **Hash de senha com bcrypt:** Ótimo uso para proteger as senhas dos usuários.
+- **Validações com Zod:** Você aplicou validações robustas no cadastro, login, agentes e casos, garantindo que os dados recebidos estejam corretos.
+- **Proteção das rotas /agentes e /casos:** Middleware `authMiddleware` está aplicado nas rotas, garantindo segurança.
+- **Documentação no INSTRUCTIONS.md:** Explicações claras sobre como registrar, logar e usar o token JWT.
+- **Endpoints extras implementados:** `/usuarios/me` para retornar dados do usuário autenticado e exclusão de usuários funcionando.
 
 ---
 
-# Vamos entender melhor o que pode estar acontecendo? 🕵️‍♂️
+## 🚨 Testes que Falharam e Análise Detalhada
 
-## 1. Testes de Agentes falhando (exemplos: criação, listagem, busca por ID, atualização, exclusão)
+Você teve muitas falhas nos testes base relacionados às operações de **Agentes** e **Casos**. Isso indica que, apesar da autenticação estar funcionando, as funcionalidades principais de CRUD para esses recursos não estão passando nos testes. Vamos destrinchar os motivos mais prováveis:
 
-### Possível causa raiz:
+---
 
-- **Middleware de autenticação funcionando, pois o teste de 401 sem token passou, então o problema está dentro da lógica dos controllers/repositories de agentes.**
+### 1. **Falhas nas Operações CRUD de Agentes**
 
-- Ao analisar o `agentesRepository.js`, vejo que você está retornando erros diretamente em catch com `return error` ou `console.log(error); return error;`. Isso pode causar problemas porque o controller espera um resultado ou `null/false` para decidir a resposta HTTP, mas se recebe um objeto de erro, isso pode gerar comportamentos inesperados.
+Testes que falharam (exemplos):
 
-- Exemplo no método `findAll`:
+- Cria agentes corretamente com status 201 e dados corretos
+- Lista todos os agentes com status 200 e dados corretos
+- Busca agente por ID com status 200 e objeto JSON correto
+- Atualiza agente por PUT e PATCH com status 200 e dados atualizados
+- Deleta agente com status 204 e corpo vazio
+- Erros 400 e 404 para dados inválidos ou agentes inexistentes
+- Recebe status 401 ao tentar acessar sem token JWT
+
+---
+
+#### Causa raiz provável:
+
+Ao analisar seu código, o ponto que chama atenção está no **repositório agentesRepository.js**:
 
 ```js
 async function findAll({ cargo, sort } = {}) {
@@ -54,232 +64,164 @@ async function findAll({ cargo, sort } = {}) {
     }
     return await search;
   } catch (error) {
-    return error; // <-- problema: retornar erro em vez de lançar
+    return error;
   }
 }
 ```
 
-- Retornar o erro assim pode fazer com que o controller envie um objeto de erro como resposta 200, ou que o fluxo se quebre silenciosamente. O ideal é **lançar o erro para o middleware de erro capturar**:
+A função parece correta, mas note que em caso de erro você está retornando o objeto `error` diretamente, ao invés de lançar ou tratar o erro. Isso pode confundir as camadas superiores e causar respostas incorretas.
+
+Além disso, no método `findById`:
 
 ```js
-catch (error) {
-  throw error; // ou simplesmente não capturar aqui e deixar propagar
+async function findById(id) {
+  try {
+    const findIndex = await db("agentes").where({ id: Number(id) });
+    if (findIndex.length === 0) {
+      return null;
+    }
+    return findIndex[0];
+  } catch (error) {
+    return error;
+  }
 }
 ```
 
-- Isso vale para todos os métodos do repository.
+Aqui também você retorna o erro no catch, o que pode causar comportamento inesperado.
 
-- Além disso, no controller `agentesController.js`, você está validando corretamente os dados com Zod, o que é ótimo! Porém, se o repository retornar algo inesperado (como um erro), o fluxo pode quebrar.
-
-- Outro ponto importante: no `updateAgente` do repository, você faz:
-
-```js
-const updateAgente = await db("agentes")
-  .where({ id: Number(id) })
-  .update(fieldsToUpdate, ["*"]);
-
-if (!updateAgente || updateAgente.length === 0) {
-  return false;
-}
-return updateAgente[0];
-```
-
-- O método `.update()` com o PostgreSQL e Knex retorna um array com os registros atualizados, mas em algumas versões ou configurações pode retornar o número de linhas afetadas (número). Se for número, a condição `updateAgente.length` pode causar erro.
-
-- Recomendo verificar o retorno do `.update()` e garantir que está retornando o registro atualizado, por exemplo:
-
-```js
-const updatedRows = await db("agentes")
-  .where({ id: Number(id) })
-  .update(fieldsToUpdate)
-  .returning("*");
-
-if (!updatedRows || updatedRows.length === 0) {
-  return false;
-}
-return updatedRows[0];
-```
-
-- Isso garante que você está retornando o objeto atualizado.
-
-- O mesmo raciocínio vale para os métodos de atualização e exclusão dos casos.
+**Recomendação:** Ao invés de `return error;` no catch, use `throw error;` para que o erro seja tratado pelo middleware de erro global e não retorne dados inválidos para o cliente.
 
 ---
 
-## 2. Testes de Casos falhando (criação, listagem, busca, atualização, exclusão)
-
-- O mesmo problema de tratamento de erros e retorno pode estar acontecendo no `casosRepository.js`.
-
-- Por exemplo, no método `deleteCaso`:
+Outro ponto importante é no arquivo `routes/agentesRoutes.js`. Observe que a rota PUT e PATCH possuem um pequeno erro no swagger, que pode refletir na documentação, mas não deve causar falha nos testes:
 
 ```js
-const deleted = await db("casos")
-  .where({ id: Number(id) })
-  .del();
+/**
+ * @swagger
+ * agentes/{id}:
+ *   put:
+ *     ...
+ */
+```
+
+Aqui falta a barra inicial `/` no path, deveria ser `/agentes/{id}` para o Swagger documentar corretamente.
+
+---
+
+Além disso, no controller `agentesController.js`, suas validações e chamadas para o repositório parecem corretas, mas certifique-se que:
+
+- O ID enviado nas rotas seja convertido corretamente para número e validado.
+- A resposta em caso de erro seja consistente (ex: status 400 para payload inválido, 404 para não encontrado).
+- Que o middleware de autenticação esteja sendo aplicado corretamente nas rotas (o que pelo seu código está OK).
+
+---
+
+### 2. **Falhas nas Operações CRUD de Casos**
+
+Testes que falharam (exemplos):
+
+- Criação de casos com status 201 e dados corretos
+- Listagem de casos com status 200 e todos os dados
+- Busca caso por ID com status 200
+- Atualização completa e parcial com PUT e PATCH com status 200
+- Deleção com status 204 e corpo vazio
+- Erros 400 e 404 para payload inválido e casos inexistentes
+- Status 401 para acesso sem token
+
+---
+
+#### Causa raiz provável:
+
+No `casosRepository.js`, as funções parecem bem implementadas, mas repare que no método `deleteCaso` você retorna:
+
+```js
 return deleted > 0 ? true : null;
 ```
 
-- Aqui você retorna `null` se não deletou nada, mas no controller você verifica se o retorno é falso para enviar 404. Melhor manter consistência e retornar `false` para indicar que não deletou:
-
-```js
-return deleted > 0;
-```
-
-- Além disso, no método `update` do repository, a mesma questão do `.update()` e `.returning()` se aplica.
+O correto seria retornar `false` em vez de `null` quando nada foi deletado, para manter consistência com outras funções que retornam booleano.
 
 ---
 
-## 3. Middleware de autenticação está ok
+No controller `casosController.js`, você está validando os IDs corretamente, mas um ponto crítico pode ser a validação do campo `agente_id` ao criar ou atualizar casos. Se o `agente_id` não existir, você retorna 404, o que está correto.
 
-- Os testes de 401 sem token passaram, mostrando que o middleware está funcionando e aplicado corretamente nas rotas.
-
----
-
-## 4. Estrutura de Diretórios e Arquivos
-
-- Sua estrutura está muito bem organizada e segue o padrão esperado, com pastas para controllers, repositories, routes, middlewares, db, etc. Isso é ótimo! 👍
-
-- Apenas fique atento para manter o arquivo `.env` com a variável `JWT_SECRET` corretamente configurada para que o JWT funcione em todos os ambientes.
+Porém, verifique se o método `create` no repositório está inserindo o registro corretamente e retornando o objeto criado. O mesmo vale para update e patch.
 
 ---
 
-# Recomendações práticas para corrigir os erros:
+### 3. **Tokens JWT e Middleware de Autenticação**
 
-### 1. Ajustar tratamento de erros nos repositories
-
-Troque todos os `catch` que fazem `return error` por `throw error` para que o middleware de erro global capture as exceções.
-
-Exemplo:
-
-```js
-async function findAll({ cargo, sort } = {}) {
-  try {
-    // ... lógica
-  } catch (error) {
-    throw error; // em vez de return error
-  }
-}
-```
-
-### 2. Ajustar os métodos de update para usar `.returning("*")`
-
-No `agentesRepository.js`:
-
-```js
-async function updateAgente(id, fieldsToUpdate) {
-  try {
-    const updatedRows = await db("agentes")
-      .where({ id: Number(id) })
-      .update(fieldsToUpdate)
-      .returning("*");
-
-    if (!updatedRows || updatedRows.length === 0) {
-      return false;
-    }
-    return updatedRows[0];
-  } catch (error) {
-    throw error;
-  }
-}
-```
-
-No `casosRepository.js`, faça o mesmo para o método `update`:
-
-```js
-async function update(id, fieldsToUpdate) {
-  try {
-    const updatedRows = await db("casos")
-      .where({ id: Number(id) })
-      .update(fieldsToUpdate)
-      .returning("*");
-
-    return updatedRows && updatedRows.length > 0 ? updatedRows[0] : null;
-  } catch (error) {
-    throw error;
-  }
-}
-```
-
-### 3. Ajustar retornos booleanos para exclusão
-
-No `deleteCaso` e `deleteByAgente`:
-
-```js
-return deleted > 0; // sempre retorna booleano
-```
-
-### 4. No controller `authController.js`, tem um pequeno erro de digitação no retorno do login:
-
-Você retorna:
-
-```js
-return res.status(200).json({ access_token: token });
-```
-
-Mas na especificação do projeto e no INSTRUCTIONS.md, o campo deve ser `acess_token` (sem o segundo "c"):
-
-```json
-{
-  "acess_token": "token aqui"
-}
-```
-
-Para evitar falha nos testes, altere para:
-
-```js
-return res.status(200).json({ acess_token: token });
-```
+Os testes de autenticação passaram, mostrando que seu middleware está funcionando bem. Isso é ótimo!
 
 ---
 
-# Pontos Bônus conquistados 🎖️
+## ⚠️ Pontos de Melhoria e Correções Recomendadas
 
-- Implementação completa de autenticação com JWT e proteção das rotas com middleware.
-- Validação rigorosa dos dados com Zod, garantindo que os dados enviados estejam no formato correto.
-- Documentação clara no `INSTRUCTIONS.md` explicando o fluxo de autenticação e uso do token JWT.
-- Estrutura do projeto organizada conforme esperado, facilitando manutenção e escalabilidade.
+1. **Tratamento de erros no repositório:**  
+   Troque todos os `return error;` por `throw error;` para que o middleware global capture e envie respostas apropriadas. Isso evita que erros virem respostas inválidas e causem falhas nos testes.
 
----
+2. **Consistência no retorno booleano:**  
+   Em funções como `deleteCaso` e `deleteByAgente`, retorne sempre `true` ou `false`, nunca `null` para indicar sucesso ou falha.
 
-# Recursos recomendados para você aprofundar e corrigir os pontos:
+3. **Swagger e documentação:**  
+   Ajuste os paths no Swagger para incluir a barra inicial `/` nas rotas PUT e PATCH de agentes, para melhorar a documentação.
 
-- Para entender melhor o uso correto do Knex com `.update()` e `.returning()`, veja este vídeo:  
-  [Guia detalhado do Knex Query Builder](https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s)
+4. **Verifique a conversão de IDs:**  
+   Sempre converta e valide os IDs recebidos nas rotas para números inteiros, e trate erros com status 400 para IDs inválidos.
 
-- Para melhorar o tratamento de erros e entender boas práticas em Node.js:  
-  [Arquitetura MVC e boas práticas em Node.js](https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s)
-
-- Para reforçar conceitos de autenticação JWT e bcrypt:  
-  [Vídeo sobre JWT na prática](https://www.youtube.com/watch?v=keS0JWOypIU)  
-  [Vídeo sobre JWT e bcrypt](https://www.youtube.com/watch?v=L04Ln97AwoY)
-
-- Para garantir que seu ambiente Docker e banco de dados estão configurados corretamente, recomendo:  
-  [Configuração de Banco de Dados com Docker e Knex](https://www.youtube.com/watch?v=uEABDBQV-Ek&t=1s)
+5. **Middleware de autenticação:**  
+   Está correto, mas sempre teste se está aplicado em todas as rotas protegidas.
 
 ---
 
-# Resumo dos principais pontos para focar:
+## 🎁 Bônus que você já conquistou
 
-- ❌ Corrigir o tratamento de erros nos repositories: usar `throw error` em vez de `return error`.
-- ❌ Ajustar os métodos de update para usar `.returning("*")` e garantir que o objeto atualizado seja retornado.
-- ❌ Padronizar retornos booleanos para exclusão de registros.
-- ❌ Corrigir o campo `access_token` para `acess_token` no login para passar os testes.
-- ✅ Manter o middleware de autenticação aplicado em rotas sensíveis.
-- ✅ Continuar usando Zod para validação rigorosa dos dados.
-- ✅ Manter a estrutura de diretórios organizada conforme o padrão esperado.
+- Endpoint `/usuarios/me` funcionando e retornando dados do usuário autenticado.
+- Logout implementado com resposta adequada.
+- Validações robustas para cadastro e login.
+- Uso correto do `.env` para segredos, o que é essencial para segurança.
 
 ---
 
-# Para finalizar...
+## 📚 Recursos para você se aprofundar e melhorar ainda mais
 
-Patrick, você está no caminho certo! Essas correções vão destravar a maior parte dos testes que estão falhando e deixar sua API pronta para produção. Continue focado, revise esses pontos com calma e não hesite em usar os recursos que te indiquei para se aprofundar.
+- Para entender melhor o tratamento correto de erros e fluxo do Knex, recomendo este vídeo:  
+  https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s
 
-Estou aqui torcendo pelo seu sucesso, conte comigo para o que precisar! 💪🚀
+- Para aprimorar sua arquitetura MVC e organização do projeto, veja:  
+  https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s
 
-Um forte abraço e até a próxima revisão! 🤗👨‍💻
+- Para reforçar conceitos de autenticação, JWT e bcrypt, assista:  
+  - https://www.youtube.com/watch?v=Q4LQOfYwujk (conceitos básicos de segurança)  
+  - https://www.youtube.com/watch?v=keS0JWOypIU (JWT na prática)  
+  - https://www.youtube.com/watch?v=L04Ln97AwoY (JWT + bcrypt na prática)
+
+- Caso tenha dúvidas na configuração do banco com Docker e Knex:  
+  https://www.youtube.com/watch?v=uEABDBQV-Ek&t=1s
+
+---
+
+## 📝 Resumo Rápido para Avançar
+
+- [ ] Altere `return error;` para `throw error;` nos repositórios para tratamento correto de erros.  
+- [ ] Ajuste os retornos booleanos para evitar `null` (ex: deleteCaso e deleteByAgente).  
+- [ ] Corrija os paths no Swagger para incluir `/` antes de `agentes/{id}`.  
+- [ ] Garanta conversão e validação de IDs em todas as rotas e controllers.  
+- [ ] Continue aplicando o middleware de autenticação nas rotas protegidas.  
+- [ ] Teste localmente os endpoints de agentes e casos para garantir que os dados estão sendo criados, listados, atualizados e deletados com os status corretos.
+
+---
+
+## Finalizando...
+
+Patrick, você está no caminho certo! 💪 A base da autenticação está muito bem feita e isso é o coração da segurança da API. Agora, focar nos detalhes das operações dos agentes e casos, sobretudo no tratamento correto de erros e retornos, vai destravar sua aprovação com nota alta! 🚀
+
+Continue firme, revisando cada parte com calma. Se precisar, volte aos recursos indicados e pratique bastante. Estou aqui torcendo pelo seu sucesso! 🌟
+
+Um abraço virtual e bons códigos! 👨‍💻👩‍💻
 
 ---
 ```
+
 
 > Caso queira tirar uma dúvida específica, entre em contato com o Chapter no nosso [discord](https://discord.gg/DryuHVnz).
 
