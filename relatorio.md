@@ -1,214 +1,310 @@
 <sup>Esse é um feedback gerado por IA, ele pode conter erros.</sup>
 
-Você tem 8 créditos restantes para usar o sistema de feedback AI.
+Você tem 7 créditos restantes para usar o sistema de feedback AI.
 
 # Feedback para PatrickStar-code:
 
 Nota final: **50.5/100**
 
-# Feedback para PatrickStar-code 🚀✨
+```markdown
+# Olá PatrickStar-code! 👋🚀
 
-Olá, Patrick! Primeiro, parabéns pelo esforço e por ter avançado tanto neste desafio complexo de API REST com segurança, autenticação e autorização! 🎉 Você conseguiu implementar a parte de usuários, com registro, login, logout e exclusão, e isso é uma vitória e tanto! 👏 Além disso, o middleware de autenticação JWT está funcionando, e as rotas estão protegidas, o que é fundamental para a segurança da aplicação. Você também implementou filtros e buscas nos casos e agentes, e isso mostra que está consolidando bem os conceitos! 💪
-
----
-
-## 🏆 Pontos Positivos que Merecem Destaque
-
-- Implementação correta do cadastro, login, logout e exclusão de usuários, com validação de senha e hashing usando bcrypt.
-- Middleware de autenticação JWT bem estruturado e aplicado nas rotas sensíveis.
-- Uso de Zod para validação dos dados de entrada, garantindo que o payload tem o formato esperado.
-- Documentação clara no arquivo `INSTRUCTIONS.md` explicando o fluxo de autenticação e uso do token JWT.
-- Estrutura do projeto organizada, seguindo o padrão MVC com controllers, repositories, rotas e middlewares.
-- Implementação dos filtros e buscas nos endpoints de agentes e casos, com validações personalizadas.
-- Implementação do endpoint `/usuarios/me` para retornar dados do usuário autenticado (requisito bônus).
-
-Você está no caminho certo! Agora vamos analisar os pontos que precisam de ajustes para destravar os testes base que ainda estão falhando.
+Primeiramente, parabéns pelo esforço em construir uma API REST com autenticação JWT, proteção de rotas e integração com PostgreSQL! 🎉 Você conseguiu implementar a parte de usuários, registro, login, logout, exclusão e até o endpoint `/usuarios/me` para retornar os dados do usuário autenticado — isso é excelente! 👏👏
 
 ---
 
-## 🚨 Análise dos Testes que Falharam e Possíveis Causas Raiz
+## 🎯 Conquistas Bônus que Merecem Destaque 🌟
 
-### 1. Testes relacionados a Agentes (todos falharam)
+- Implementou corretamente a criação e login de usuários com validação e hashing de senha.
+- Implementou logout e exclusão de usuários com sucesso.
+- Endpoint `/usuarios/me` funcionando para retornar dados do usuário autenticado.
+- Middleware de autenticação JWT aplicado corretamente, bloqueando acesso sem token.
+- As mensagens de erro personalizadas e validações via Zod estão bem estruturadas.
+- Documentação no `INSTRUCTIONS.md` está clara e orienta bem sobre registro, login e uso do token JWT.
 
-> Testes como:
-> - Criação de agentes com status 201 e dados corretos
-> - Listagem de agentes com status 200 e dados corretos
-> - Busca, atualização (PUT e PATCH), exclusão com status codes corretos
-> - Erros 400 e 404 para casos inválidos ou inexistentes
-> - Erro 401 para acesso sem token JWT
+Você está no caminho certo para uma API segura e profissional! 👏
 
-**Causa provável:** Mesmo o middleware de autenticação sendo aplicado nas rotas de agentes, as operações de agentes estão falhando os testes básicos de CRUD.
+---
 
-Vamos investigar o fluxo:
+## ⚠️ Análise dos Testes que Falharam: Onde o Código Precisa de Atenção
 
-- O middleware `authMiddleware` está correto e protege as rotas.
-- Os controllers de agentes (`agentesController.js`) possuem validação e chamam o repositório corretamente.
-- O repositório `agentesRepository.js` usa Knex para acessar o banco.
-- As migrations para a tabela `agentes` existem e estão corretas.
+### 1. Testes da funcionalidade de **Agentes** (todos falharam)
 
-**Possível causa raiz:**
+Esses testes são cruciais porque envolvem o CRUD completo dos agentes, que é parte fundamental da API.
 
-- A migration da tabela `agentes` está criando o campo `cargo` como string simples, mas no controller você valida com enum de três valores: `"inspetor"`, `"delegado"`, `"agente"`.
-- No seed você insere agentes com cargos `"delegado"` e `"inspetor"`, mas não tem nenhum com `"agente"`.
-- O problema mais provável é que o campo `cargo` na migration não está restrito a esses valores, o que não é obrigatório, mas pode gerar inconsistência.
-- Porém, isso não causaria falha nos testes de criação/listagem, a não ser que o payload enviado nos testes tenha `cargo` com valores inesperados.
-- Outra hipótese é que a aplicação está rodando, mas o banco não está sincronizado com as migrations, ou seja, as migrations não foram executadas corretamente ou o banco usado nos testes não está populado.
+**Resumo dos erros:**
 
-**Verificação importante:**
+- Criação, listagem, busca por ID, atualização (PUT e PATCH) e exclusão de agentes estão falhando.
+- Recebe status 401 ao tentar acessar agentes sem token JWT (isso está correto, middleware funcionando).
+- Recebe status 400 para payload inválido e 404 para agente inexistente.
+- Em geral, os testes de agentes falham em todas as operações.
 
-- Você tem a migration `20250806190145_agentes.js` para a tabela agentes.
-- O `knexfile.js` está configurado para o ambiente `development` com as variáveis de ambiente.
-- Você executou as migrations com `npx knex migrate:latest`?
-- O banco está rodando corretamente no container Docker? O nome do serviço no `docker-compose.yml` é `postgres-db` (com hífen), mas no comando para entrar no container você usou `postgres-database` (sem hífen). Isso pode causar confusão.
+---
 
-```yaml
-# docker-compose.yml
-services:
-  postgres-db:
-    container_name: postgres-database
+### Causa raiz provável: **Middleware de autenticação não está bloqueando corretamente ou as rotas de agentes não estão protegidas corretamente, ou há algum problema na comunicação com o banco para agentes.**
+
+Vamos aprofundar:
+
+- No seu `routes/agentesRoutes.js`, você aplicou o `authMiddleware` em todas as rotas de agentes, o que está correto:
+
+```js
+router.get("/", authMiddleware, agentesController.findAll);
+router.get("/:id", authMiddleware, agentesController.findById);
+// e assim por diante...
 ```
 
-Note que o nome do serviço é `postgres-db`, mas o container é nomeado como `postgres-database`. Se você está acessando o container pelo nome do serviço, pode estar acessando outro container.
+- No `authMiddleware.js`, o JWT é verificado corretamente e o `req.user` é setado.
 
-**Recomendação:** Verifique se o banco de dados está corretamente populado e se as migrations foram aplicadas no banco correto.
+- Olhando para o `agentesRepository.js`, as queries parecem corretas, usando Knex para buscar, criar, atualizar e deletar agentes.
+
+- No entanto, um ponto que pode estar causando falha é na validação dos IDs e no tratamento do retorno das queries.
+
+Por exemplo, no método `findById`:
+
+```js
+async function findById(id) {
+  const findIndex = await db("agentes").where({ id: Number(id) });
+  if (findIndex.length === 0) {
+    return null;
+  }
+  return findIndex[0];
+}
+```
+
+Isso está correto.
+
+- No controller, ao buscar agente por ID:
+
+```js
+const idNum = Number(req.params.id);
+if (Number.isNaN(idNum)) {
+  return res.status(400).json({ message: "ID inválido" });
+}
+const agente = await agentesRepository.findById(idNum);
+if (!agente) {
+  return res.status(404).json({ message: "Agente inexistente" });
+}
+return res.status(200).json(agente);
+```
+
+Também correto.
 
 ---
 
-### 2. Testes relacionados a Casos (todos falharam)
+### Um ponto importante para investigar: 
 
-O mesmo raciocínio dos agentes vale para casos.
+No arquivo `db/migrations/20250806190145_agentes.js`, a tabela agentes é criada com o campo `cargo` como `string`:
 
-- A migration `20250806190341_casos.js` cria a tabela `casos` e o tipo ENUM `statusEnum`.
-- O seed `casos.js` popula a tabela.
-- O controller e repositório estão implementados corretamente.
-- O middleware de autenticação está aplicado.
+```js
+table.string("cargo").notNullable();
+```
 
-**Possível causa raiz:**
+Porém, no seu schema Zod, você definiu `cargo` como enum de três opções:
 
-- Se o banco não está populado ou as migrations não foram aplicadas, as queries vão falhar.
-- Se o banco usado nos testes não é o mesmo que você está populando localmente, os testes falharão.
-- Além disso, no seu controller, você está validando o `agente_id` e retornando 404 se o agente não existir. Se o banco não tem agentes, a criação de casos falha.
+```js
+cargo: z.enum(["inspetor", "delegado", "agente"], {
+  errorMap: () => ({
+    message: "Cargo inválido. Deve ser 'inspetor', 'delegado' ou 'agente'.",
+  }),
+}),
+```
+
+Isso é correto para validação, mas não há restrição no banco para o campo `cargo`. Isso não deve causar erro, só cuidado para não inserir valores inválidos.
 
 ---
 
-### 3. Testes de Autenticação e Usuários (passaram!)
+### Possível problema: **A migration dos agentes pode não estar sendo executada corretamente, ou o banco não está populado com a tabela agentes.**
 
-Isso mostra que seu código de usuários está correto. Você implementou hashing, validação, geração de JWT e proteção das rotas.
+Se a tabela agentes não existir, todas as operações falharão silenciosamente ou retornarão vazias.
+
+**Você pode verificar isso rodando no seu container do Postgres:**
+
+```sql
+SELECT * FROM agentes;
+```
+
+Se a tabela não existir, ou estiver vazia, os testes vão falhar.
 
 ---
 
-## ⚠️ Pontos Críticos para Corrigir
+### Outra possível causa: **O servidor está rodando na porta 3000, mas os testes podem estar esperando a API em outra porta (não é provável, mas vale checar).**
 
-### A. Verifique a execução das migrations e seeds no banco correto
+---
 
-- O container Docker deve estar rodando com o banco configurado.
-- Execute as migrations com:
+### Recomendações para corrigir falhas nos agentes:
+
+- Verifique se as migrations foram executadas com sucesso:
 
 ```bash
 npx knex migrate:latest
 ```
 
-- Execute os seeds com:
+- Confirme que a tabela `agentes` existe e está populada (se necessário, rode os seeds).
 
-```bash
-npx knex seed:run
-```
+- Verifique se o banco está acessível e as variáveis de ambiente `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB` estão corretas.
 
-- Confirme que as tabelas `agentes`, `casos` e `usuarios` existem e estão populadas.
-
-### B. Atenção ao nome do container no Docker
-
-No seu `docker-compose.yml`, o serviço é `postgres-db` e o container é nomeado `postgres-database`. Para acessar o banco via terminal, use o nome correto do container:
-
-```bash
-docker exec -it postgres-database psql -U postgres -d policia_db
-```
-
-Se você usar outro nome, pode estar acessando um container vazio ou errado.
+- Garanta que o middleware `authMiddleware` está sendo aplicado em todas as rotas de agentes (você já fez isso, mas vale conferir).
 
 ---
 
-### C. Ajuste no retorno do login
+### 2. Testes da funcionalidade de **Casos** (todos falharam)
 
-No seu controller `authController.js`, no método `login`:
+Os testes de casos apresentam erros similares:
+
+- Criação, listagem, busca, atualização, patch e exclusão falham.
+- Recebem status 400 para payload inválido, 404 para casos ou agentes inexistentes.
+- Recebem 401 sem token JWT (isso está correto).
+
+---
+
+### Causas possíveis:
+
+- Na migration `20250806190341_casos.js`, você criou a tabela `casos` com um ENUM para `status` e uma foreign key para `agente_id`.
+
+- Se a tabela `casos` não existir, ou os dados de agentes não existirem, as operações falharão.
+
+- Além disso, o seed `db/seeds/casos.js` começa deletando todos os casos, e insere casos com `agente_id` referenciando agentes.
+
+Se os agentes não existem, os casos não podem ser inseridos.
+
+---
+
+### Recomendações para corrigir falhas nos casos:
+
+- Certifique-se de que as migrations estão aplicadas na ordem correta: agentes → casos → usuários.
+
+- Rode os seeds para popular agentes e casos.
+
+- Verifique se o banco está consistente e as foreign keys estão corretas.
+
+---
+
+### 3. Testes bônus que falharam: endpoints de filtragem e busca
+
+Você implementou os endpoints de filtro e busca, mas os testes bônus falharam.
+
+Possíveis motivos:
+
+- Algum detalhe na implementação das queries no repositório pode estar errado, como tipos de dados ou uso do Knex.
+
+- Por exemplo, no `casosRepository.js`, o método `getAll` faz:
+
+```js
+if (agente_id !== undefined) {
+  search = search.where({ agente_id: Number(agente_id) });
+}
+```
+
+Se `agente_id` for `NaN`, isso pode gerar problema.
+
+- No controller, você valida se `agente_id` é inteiro, o que é correto.
+
+---
+
+### 4. Pequenos detalhes observados no código que podem impactar
+
+- No `authController.js`, no método `deleteUser`, o bloco `catch` está vazio:
+
+```js
+async function deleteUser(req, res, next) {
+  try {
+    const id = req.params.id;
+    const deleted = await usuariosRepository.deleteUser(id);
+    if (!deleted) {
+      return res.status(404).json({ message: "Usuario nao encontrado." });
+    }
+    return res.status(204).send();
+  } catch (error) {}
+}
+```
+
+**Sugestão:** Sempre repasse o erro para o middleware de erro para não deixar a requisição pendente:
+
+```js
+catch (error) {
+  next(error);
+}
+```
+
+- No `INSTRUCTIONS.md`, no exemplo de login, o token é retornado com a chave errada `"acess_token"` (com 's' faltando):
+
+```json
+{
+  "acess_token": "eyJhbGciOiJIUzI1NiIsInR..."
+}
+```
+
+No seu código, você retorna corretamente:
 
 ```js
 return res.status(200).json({ access_token: token });
 ```
 
-O teste espera a chave `acess_token` (sem "c" duplo):
-
-```json
-{
-  "acess_token": "token aqui"
-}
-```
-
-No seu código, está com `access_token` (com dois "c"s). Isso pode causar falha no teste.
-
-**Correção sugerida:**
-
-```js
-return res.status(200).json({ acess_token: token });
-```
-
-Essa pequena diferença de nome pode fazer os testes falharem.
+Essa discrepância pode confundir quem lê a documentação.
 
 ---
 
-### D. Validação de ID nos controllers de agentes e casos
+## ✅ Pontos Fortes para Continuar Explorando
 
-Você está convertendo o ID para número com `Number(req.params.id)` e validando com `Number.isNaN()`, o que está correto. Porém, nos repositórios, você também converte para número. Isso é bom, mas certifique-se que em todos os lugares o ID é tratado como número.
-
----
-
-### E. Middleware de autenticação
-
-Seu middleware está correto, mas para garantir que o token seja passado em todas as rotas protegidas, revise se todas as rotas de agentes e casos têm o middleware aplicado, o que pelo seu código está correto.
+- Uso correto do `bcryptjs` para hashing das senhas.
+- Validação robusta com `zod`.
+- Separação clara entre controllers, repositories, middlewares e rotas.
+- Uso do Knex para queries SQL.
+- Implementação do middleware de autenticação JWT.
+- Uso de variáveis de ambiente para segredos e configuração do banco.
+- Documentação clara no `INSTRUCTIONS.md`.
+- Uso do Swagger para documentação das rotas.
 
 ---
 
 ## 📚 Recursos Recomendados para Você
 
-- Para garantir que seu banco, migrations e seeds estejam funcionando perfeitamente, recomendo este vídeo excelente sobre configuração com Docker e Knex:  
-  https://www.youtube.com/watch?v=uEABDBQV-Ek&t=1s
+- Para garantir que as migrations e seeds estejam corretas e aplicadas:  
+  [Configuração de Banco de Dados com Docker e Knex](https://www.youtube.com/watch?v=uEABDBQV-Ek&t=1s)  
+  [Documentação oficial do Knex.js sobre migrations](https://www.youtube.com/watch?v=dXWy_aGCW1E)
 
-- Para entender melhor como usar Knex para consultas e manipulação do banco, este guia é muito útil:  
-  https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s
+- Para aprofundar no uso do Knex Query Builder e evitar erros nas queries:  
+  [Knex Query Builder Guia Completo](https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s)
 
-- Sobre autenticação, JWT e bcrypt, este vídeo feito pelos meus criadores explica muito bem os conceitos e a prática:  
-  https://www.youtube.com/watch?v=L04Ln97AwoY
+- Para entender melhor autenticação JWT e segurança:  
+  [Vídeo dos meus criadores sobre autenticação JWT](https://www.youtube.com/watch?v=Q4LQOfYwujk)  
+  [JWT na prática com Node.js](https://www.youtube.com/watch?v=keS0JWOypIU)
 
-- Para organizar seu projeto usando MVC e boas práticas, veja este conteúdo:  
-  https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s
-
----
-
-## ✅ Resumo Rápido dos Pontos para Melhorar
-
-- [ ] **Corrigir o nome da chave do token JWT no retorno do login para `acess_token`**, conforme esperado nos testes.  
-- [ ] **Garantir que as migrations e seeds foram aplicadas no banco correto**, e que o banco está populado com agentes e casos.  
-- [ ] **Verificar o nome do container Docker e o acesso ao banco**, para evitar confusão entre nomes (`postgres-db` vs `postgres-database`).  
-- [ ] Confirmar que as rotas de agentes e casos estão protegidas pelo middleware de autenticação.  
-- [ ] Revisar se o ambiente `.env` contém as variáveis necessárias (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `JWT_SECRET`) e se estão sendo carregadas corretamente.  
-- [ ] Testar manualmente os endpoints de agentes e casos para garantir que CRUD funciona com autenticação.
+- Para boas práticas de organização de código e arquitetura MVC em Node.js:  
+  [Arquitetura MVC para Node.js](https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s)
 
 ---
 
-## 💬 Considerações Finais
+## 📝 Resumo Rápido dos Principais Pontos para Melhorar
 
-Patrick, seu projeto está muito bem estruturado e você já domina conceitos importantes como autenticação JWT, hashing de senhas, validação de dados e organização MVC. Os erros que estão causando falhas nos testes parecem estar relacionados principalmente à sincronização do banco de dados e pequenos detalhes (como o nome da chave do token no login).
+- **Confirme que as migrations estão aplicadas e o banco está populado com agentes e casos.**  
+  Rode `npx knex migrate:latest` e `npx knex seed:run`.
 
-Corrigindo esses pontos, você vai destravar a maioria dos testes base e garantir uma API segura e funcional, pronta para produção! Continue firme, pois você está muito próximo do sucesso completo! 🚀
+- **Verifique se o banco está acessível e as variáveis de ambiente estão corretas.**
 
-Se precisar, volte aos vídeos recomendados para reforçar os conceitos e não hesite em testar cada parte isoladamente para entender o funcionamento.
+- **Corrija o `catch` vazio no `deleteUser` para repassar erros ao middleware.**
 
-Boa sorte e conte comigo para o que precisar! 👊😉
+- **Ajuste a documentação no `INSTRUCTIONS.md` para usar `"access_token"` corretamente.**
+
+- **Garanta que os IDs recebidos nas rotas são números válidos antes de usar nas queries.**
+
+- **Revise as queries no repositório para evitar passar valores inválidos para o banco.**
+
+- **Testes bônus falhos indicam que filtros e buscas precisam de refinamento — valide tipos e lógicas.**
 
 ---
 
-Abraço,  
-Seu Code Buddy 🤖💙
+## Patrick, você está quase lá! 🚀
+
+Seu projeto tem uma base sólida, especialmente na parte de autenticação e segurança, que é um dos pontos mais complexos. O principal desafio agora é garantir que o banco de dados esteja configurado corretamente, com todas as migrations e seeds aplicadas, para que as funcionalidades de agentes e casos funcionem perfeitamente.
+
+Continue focado, ajuste os pontos que indiquei, e logo você terá uma API robusta, segura e profissional! 💪🌟
+
+Qualquer dúvida, estarei aqui para ajudar! 👨‍💻✨
+
+Abraços e bons códigos!  
+— Seu Code Buddy 🤖❤️
+```
 
 > Caso queira tirar uma dúvida específica, entre em contato com o Chapter no nosso [discord](https://discord.gg/DryuHVnz).
 
