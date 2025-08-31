@@ -9,16 +9,20 @@ class APIError extends Error {
 }
 
 function authMiddleware(req, res, next) {
-  const cookieToken = req.cookies?.token;
   const authHeader = req.headers["authorization"];
-  const headerToken = authHeader && authHeader.split(" ")[1];
-
-  const token = headerToken || cookieToken;
+  const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
     return next(new APIError(401, "Token necessário"));
   }
-  jwt.verify(token, process.env.JWT_SECRET || "secret", (err, user) => {
+
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    // Se o segredo não estiver definido, falhe rapidamente para evitar problemas
+    return next(new APIError(500, "JWT_SECRET não configurado no ambiente"));
+  }
+
+  jwt.verify(token, secret, (err, user) => {
     if (err) {
       return next(new APIError(401, "Token inválido"));
     }

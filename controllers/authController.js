@@ -142,7 +142,9 @@ async function deleteUser(req, res, next) {
       return res.status(404).json({ message: "Usuario nao encontrado." });
     }
     return res.status(204).send();
-  } catch (error) {}
+  } catch (error) {
+    next(error);
+  }
 }
 
 async function logout(req, res, next) {
