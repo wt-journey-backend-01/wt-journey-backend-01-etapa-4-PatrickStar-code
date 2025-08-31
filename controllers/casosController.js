@@ -159,7 +159,7 @@ async function deleteCaso(req, res, next) {
     if (!casosDeleted) {
       return res.status(404).json({ message: "Caso inexistente" });
     }
-    return res.status(204).send(); // corpo vazio
+    return res.status(204).send();
   } catch (error) {
     next(error);
   }
