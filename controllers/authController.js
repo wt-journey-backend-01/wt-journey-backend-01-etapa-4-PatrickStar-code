@@ -124,9 +124,11 @@ async function login(req, res, next) {
       return res.status(401).json({ message: "Senha incorreta." });
     }
 
-    const token = jwt.sign({ id: usuario.id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
-    });
+    const token = jwt.sign(
+      { id: usuario.id, email: usuario.email },
+      process.env.JWT_SECRET || "segredo",
+      { expiresIn: "1d" }
+    );
 
     return res.status(200).json({ access_token: token });
   } catch (error) {
