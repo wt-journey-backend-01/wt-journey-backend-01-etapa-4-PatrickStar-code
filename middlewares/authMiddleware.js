@@ -1,26 +1,41 @@
 const jwt = require("jsonwebtoken");
-const errorHandler = require("../utils/errorHandler");
+const ApiError = require("../utils/errorHandler");
 
-function authMiddleware(req, res, next) {
+function authenticateToken(req, res, next) {
   try {
-    const tokenHeader = req.headers.authorization;
-    const token = tokenHeader && tokenHeader.split(" ")[1];
-    if (!token) {
-      return res
-        .status(401)
-        .json({ message: "Token de autenticação obrigatório." });
+    const cookieToken = req.cookies?.access_token;
+    const authHeader = req.headers["authorization"];
+    const headerToken = authHeader && authHeader.split(" ")[1];
+
+    const access_token = cookieToken || headerToken;
+
+    if (!access_token) {
+      return next(
+        new ApiError("access_token não fornecido.", 401, {
+          access_token: "access_token nao fornecido",
+        })
+      );
     }
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-      if (err) {
-        return res
-          .status(401)
-          .json({ message: "Token de autenticação inválido." });
+
+    jwt.verify(
+      access_token,
+      process.env.JWT_SECRET || "segredo aqui",
+      (err, user) => {
+        if (err) {
+          return next(
+            new ApiError("access_token inválido ou expirado.", 401, {
+              access_token: err.message,
+            })
+          );
+        }
+
+        req.user = user;
+        next();
       }
-      req.user = decoded;
-      next();
-    });
+    );
   } catch (error) {
-    next(error);
+    return next(new ApiError("Error authenticating user", 401, error.message));
   }
 }
-module.exports = authMiddleware;
+
+module.exports = authenticateToken;

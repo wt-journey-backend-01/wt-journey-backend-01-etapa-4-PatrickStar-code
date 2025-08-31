@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const casosController = require("../controllers/casosController");
-const authMiddleware = require("../middlewares/authMiddleware");
+const authenticateToken = require("../middlewares/authMiddleware");
 
 /**
  * @swagger
@@ -34,7 +34,7 @@ const authMiddleware = require("../middlewares/authMiddleware");
  *       200:
  *         description: Lista de casos
  */
-router.get("/", authMiddleware, casosController.getAll);
+router.get("/", authenticateToken, casosController.getAll);
 
 /**
  * @swagger
@@ -53,7 +53,7 @@ router.get("/", authMiddleware, casosController.getAll);
  *       200:
  *         description: Lista de casos encontrados
  */
-router.get("/search", authMiddleware, casosController.search);
+router.get("/search", authenticateToken, casosController.search);
 
 /**
  * @swagger
@@ -86,7 +86,7 @@ router.get("/search", authMiddleware, casosController.search);
  *       404:
  *         description: Agente inexistente
  */
-router.post("/", authMiddleware, casosController.create);
+router.post("/", authenticateToken, casosController.create);
 
 /**
  * @swagger
@@ -108,7 +108,7 @@ router.post("/", authMiddleware, casosController.create);
  *       404:
  *         description: Caso inexistente
  */
-router.get("/:id", authMiddleware, casosController.getById);
+router.get("/:id", authenticateToken, casosController.getById);
 
 /**
  * @swagger
@@ -147,7 +147,7 @@ router.get("/:id", authMiddleware, casosController.getById);
  *       404:
  *         description: Caso ou agente inexistente
  */
-router.put("/:id", authMiddleware, casosController.update);
+router.put("/:id", authenticateToken, casosController.update);
 
 /**
  * @swagger
@@ -185,7 +185,7 @@ router.put("/:id", authMiddleware, casosController.update);
  *       404:
  *         description: Caso ou agente inexistente
  */
-router.patch("/:id", authMiddleware, casosController.patch);
+router.patch("/:id", authenticateToken, casosController.patch);
 
 /**
  * @swagger
@@ -207,7 +207,7 @@ router.patch("/:id", authMiddleware, casosController.patch);
  *       404:
  *         description: Caso não encontrado
  */
-router.delete("/:id", authMiddleware, casosController.deleteCaso);
+router.delete("/:id", authenticateToken, casosController.deleteCaso);
 
 /**
  * @swagger
@@ -229,6 +229,6 @@ router.delete("/:id", authMiddleware, casosController.deleteCaso);
  *       404:
  *         description: Caso ou agente inexistente
  */
-router.get("/:casos_id/agente", authMiddleware, casosController.getAgente);
+router.get("/:casos_id/agente", authenticateToken, casosController.getAgente);
 
 module.exports = router;

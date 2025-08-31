@@ -100,7 +100,7 @@ Se as credenciais estiverem corretas, a API retornará um **JWT**:
 
 ```json
 {
-  "acess_token": "eyJhbGciOiJIUzI1NiIsInR..."
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR..."
 }
 ```
 
