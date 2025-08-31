@@ -1,8 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const agentesController = require("../controllers/agentesController");
-const authenticateToken = require("../middlewares/authMiddleware");
-
+const authMiddleware = require("../middlewares/authMiddleware");
 /**
  * @swagger
  * tags:
@@ -33,7 +32,7 @@ const authenticateToken = require("../middlewares/authMiddleware");
  *       200:
  *         description: Lista de agentes
  */
-router.get("/", authenticateToken, agentesController.findAll);
+router.get("/", authMiddleware, agentesController.findAll);
 
 /**
  * @swagger
@@ -56,7 +55,7 @@ router.get("/", authenticateToken, agentesController.findAll);
  *       404:
  *         description: Agente não encontrado
  */
-router.get("/:id", authenticateToken, agentesController.findById);
+router.get("/:id", authMiddleware, agentesController.findById);
 
 /**
  * @swagger
@@ -85,7 +84,7 @@ router.get("/:id", authenticateToken, agentesController.findById);
  *       400:
  *         description: Dados inválidos
  */
-router.post("/", authenticateToken, agentesController.create);
+router.post("/", authMiddleware, agentesController.create);
 
 /**
  * @swagger
@@ -107,7 +106,7 @@ router.post("/", authenticateToken, agentesController.create);
  *       404:
  *         description: Agente não encontrado
  */
-router.delete("/:id", authenticateToken, agentesController.deleteAgente);
+router.delete("/:id", authMiddleware, agentesController.deleteAgente);
 
 /**
  * @swagger
@@ -145,7 +144,7 @@ router.delete("/:id", authenticateToken, agentesController.deleteAgente);
  *       404:
  *         description: Agente não encontrado
  */
-router.put("/:id", authenticateToken, agentesController.updateAgente);
+router.put("/:id", authMiddleware, agentesController.updateAgente);
 
 /**
  * @swagger
@@ -182,6 +181,6 @@ router.put("/:id", authenticateToken, agentesController.updateAgente);
  *       404:
  *         description: Agente não encontrado
  */
-router.patch("/:id", authenticateToken, agentesController.patch);
+router.patch("/:id", authMiddleware, agentesController.patch);
 
 module.exports = router;
