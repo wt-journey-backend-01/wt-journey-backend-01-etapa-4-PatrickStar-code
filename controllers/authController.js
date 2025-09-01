@@ -2,7 +2,6 @@ const { z } = require("zod");
 const express = require("express");
 const usuariosRepository = require("../repositories/usuariosRepository");
 const jwt = require("jsonwebtoken");
-const errorHandler = require("../utils/errorHandler");
 const bcrypt = require("bcryptjs");
 
 const senhaRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
@@ -31,6 +30,23 @@ const LoginSchema = z.object({
         "A senha deve conter pelo menos uma letra minúscula, uma maiúscula, um número e um caractere especial.",
     }),
 });
+
+// Funções auxiliares para tokens
+function gerarAccessToken(usuario) {
+  return jwt.sign(
+    { id: usuario.id, email: usuario.email },
+    process.env.JWT_SECRET || "segredo",
+    { expiresIn: "15m" } // curto prazo
+  );
+}
+
+function gerarRefreshToken(usuario) {
+  return jwt.sign(
+    { id: usuario.id, email: usuario.email },
+    process.env.JWT_REFRESH_SECRET || "refreshSegredo",
+    { expiresIn: "7d" } // longo prazo
+  );
+}
 
 async function cadastro(req, res, next) {
   try {
@@ -67,39 +83,6 @@ async function cadastro(req, res, next) {
   }
 }
 
-async function findMe(req, res, next) {
-  try {
-    const authHeader = req.headers["authorization"];
-    const token = authHeader && authHeader.split(" ")[1];
-
-    if (!token) {
-      return res
-        .status(401)
-        .json({ message: "Token de autenticação obrigatório." });
-    }
-
-    // Verifica e decodifica o token de forma síncrona
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET || "segredo");
-    } catch (err) {
-      return res
-        .status(401)
-        .json({ message: "Token de autenticação inválido." });
-    }
-
-    // Busca usuário
-    const usuario = await usuariosRepository.findById(decoded.id);
-    if (!usuario) {
-      return res.status(404).json({ message: "Usuário não encontrado." });
-    }
-
-    return res.status(200).json(usuario);
-  } catch (error) {
-    next(error);
-  }
-}
-
 async function login(req, res, next) {
   try {
     const { email, senha } = req.body;
@@ -124,13 +107,78 @@ async function login(req, res, next) {
       return res.status(401).json({ message: "Senha incorreta." });
     }
 
-    const token = jwt.sign(
-      { id: usuario.id, email: usuario.email },
-      process.env.JWT_SECRET || "segredo",
-      { expiresIn: "1d" }
-    );
+    const accessToken = gerarAccessToken(usuario);
+    const refreshToken = gerarRefreshToken(usuario);
 
-    return res.status(200).json({ access_token: token });
+    // Aqui você pode salvar o refreshToken no banco se quiser controlar a validade
+    // await usuariosRepository.saveRefreshToken(usuario.id, refreshToken);
+
+    return res
+      .status(200)
+      .json({ access_token: accessToken, refresh_token: refreshToken });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function refresh(req, res, next) {
+  try {
+    const { refresh_token } = req.body;
+
+    if (!refresh_token) {
+      return res.status(401).json({ message: "Refresh token obrigatório." });
+    }
+
+    try {
+      const decoded = jwt.verify(
+        refresh_token,
+        process.env.JWT_REFRESH_SECRET || "refreshSegredo"
+      );
+
+      const usuario = await usuariosRepository.findById(decoded.id);
+      if (!usuario) {
+        return res.status(404).json({ message: "Usuário não encontrado." });
+      }
+
+      const newAccessToken = gerarAccessToken(usuario);
+
+      return res.status(200).json({ access_token: newAccessToken });
+    } catch (err) {
+      return res
+        .status(403)
+        .json({ message: "Refresh token inválido ou expirado." });
+    }
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function findMe(req, res, next) {
+  try {
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+
+    if (!token) {
+      return res
+        .status(401)
+        .json({ message: "Token de autenticação obrigatório." });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || "segredo");
+    } catch (err) {
+      return res
+        .status(401)
+        .json({ message: "Token de autenticação inválido." });
+    }
+
+    const usuario = await usuariosRepository.findById(decoded.id);
+    if (!usuario) {
+      return res.status(404).json({ message: "Usuário não encontrado." });
+    }
+
+    return res.status(200).json(usuario);
   } catch (error) {
     next(error);
   }
@@ -151,14 +199,17 @@ async function deleteUser(req, res, next) {
 
 async function logout(req, res, next) {
   try {
+    // Se você salvar refresh tokens no banco, pode removê-lo aqui
     return res.status(200).json({ message: "Logout realizado com sucesso." });
   } catch (error) {
     next(error);
   }
 }
+
 module.exports = {
   cadastro,
   login,
+  refresh,
   deleteUser,
   logout,
   findMe,
