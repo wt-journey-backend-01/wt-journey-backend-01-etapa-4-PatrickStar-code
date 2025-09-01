@@ -81,7 +81,7 @@ async function findMe(req, res, next) {
     // Verifica e decodifica o token de forma síncrona
     let decoded;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      decoded = jwt.verify(token, process.env.JWT_SECRET || "segredo");
     } catch (err) {
       return res
         .status(401)
