@@ -1,35 +1,29 @@
 const jwt = require("jsonwebtoken");
 
-class APIError extends Error {
-  constructor(status, message) {
-    super(message);
-    this.status = status;
-    this.name = "APIError";
-  }
-}
-
 function authMiddleware(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
+  try {
+    const cookieToken = req.cookies?.access_token;
+    const authHeader = req.headers["authorization"];
+    const headerToken = authHeader && authHeader.split(" ")[1];
 
-  if (!token) {
-    return next(new APIError(401, "Token necessário"));
-  }
+    const token = cookieToken || headerToken;
 
-  const secret = process.env.JWT_SECRET || "segredo";
-
-  if (!secret) {
-    // Se o segredo não estiver definido, falhe rapidamente para evitar problemas
-    return next(new APIError(500, "JWT_SECRET não configurado no ambiente"));
-  }
-
-  jwt.verify(token, secret, (err, user) => {
-    if (err) {
-      return next(new APIError(401, "Token inválido"));
+    if (!token) {
+      return res
+        .status(401)
+        .json({ status: 401, message: "Token não fornecido" });
     }
-    req.user = user;
-    return next();
-  });
+
+    const usuario = (req.user = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "secret"
+    ));
+    req.user = usuario;
+
+    next();
+  } catch (erro) {
+    return res.status(401).json({ status: 401, message: "Token Inválido" });
+  }
 }
 
 module.exports = authMiddleware;
