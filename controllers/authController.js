@@ -66,7 +66,7 @@ async function cadastro(req, res, next) {
 
     const usuario = await usuariosRepository.findByEmail(email);
     if (usuario) {
-      return res.status(400).json({ message: "Email já cadastrado." });
+      return res.status(409).json({ message: "Email já cadastrado." });
     }
 
     const senhaHash = await bcrypt.hash(senha, 8);
@@ -88,7 +88,7 @@ async function login(req, res, next) {
     const { email, senha } = req.body;
 
     if (!email || !senha) {
-      return res.status(400).json({ message: "Email e senha obrigatorio." });
+      return res.status(400).json({ message: "Email e senha obrigatórios." });
     }
 
     const parsed = LoginSchema.safeParse(req.body);
@@ -99,7 +99,7 @@ async function login(req, res, next) {
 
     const usuario = await usuariosRepository.findByEmail(email);
     if (!usuario) {
-      return res.status(400).json({ message: "Usuario nao encontrado." });
+      return res.status(401).json({ message: "Usuário não encontrado." });
     }
 
     const senhaMatch = await bcrypt.compare(senha, usuario.senha);
@@ -109,9 +109,6 @@ async function login(req, res, next) {
 
     const accessToken = gerarAccessToken(usuario);
     const refreshToken = gerarRefreshToken(usuario);
-
-    // Aqui você pode salvar o refreshToken no banco se quiser controlar a validade
-    // await usuariosRepository.saveRefreshToken(usuario.id, refreshToken);
 
     return res
       .status(200)
@@ -186,10 +183,15 @@ async function findMe(req, res, next) {
 
 async function deleteUser(req, res, next) {
   try {
-    const id = req.params.id;
+    const id = Number(req.params.id);
+
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "ID inválido." });
+    }
+
     const deleted = await usuariosRepository.deleteUser(id);
     if (!deleted) {
-      return res.status(404).json({ message: "Usuario nao encontrado." });
+      return res.status(404).json({ message: "Usuário não encontrado." });
     }
     return res.status(204).send();
   } catch (error) {
@@ -199,7 +201,23 @@ async function deleteUser(req, res, next) {
 
 async function logout(req, res, next) {
   try {
-    // Se você salvar refresh tokens no banco, pode removê-lo aqui
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+
+    if (!token) {
+      return res
+        .status(401)
+        .json({ message: "Token de autenticação obrigatório." });
+    }
+
+    try {
+      jwt.verify(token, process.env.JWT_SECRET || "segredo");
+    } catch (err) {
+      return res
+        .status(401)
+        .json({ message: "Token de autenticação inválido." });
+    }
+
     return res.status(200).json({ message: "Logout realizado com sucesso." });
   } catch (error) {
     next(error);
