@@ -52,6 +52,12 @@ async function cadastro(req, res, next) {
   try {
     const { email, senha, nome } = req.body;
 
+    if (!email || !senha || !nome) {
+      return res
+        .status(400)
+        .json({ message: "Email, Senha e nome obrigatórios." });
+    }
+
     const parsed = UsuarioSchema.safeParse(req.body);
     if (!parsed.success) {
       const messages = parsed.error.issues.map((issue) => issue.message);
@@ -60,7 +66,7 @@ async function cadastro(req, res, next) {
 
     const usuario = await usuariosRepository.findByEmail(email);
     if (usuario) {
-      return res.status(409).json({ message: "Email já cadastrado." });
+      return res.status(400).json({ message: "Email já cadastrado." });
     }
 
     const senhaHash = await bcrypt.hash(senha, 8);
@@ -81,6 +87,10 @@ async function login(req, res, next) {
   try {
     const { email, senha } = req.body;
 
+    if (!email || !senha) {
+      return res.status(400).json({ message: "Email e senha obrigatorio." });
+    }
+
     const parsed = LoginSchema.safeParse(req.body);
     if (!parsed.success) {
       const messages = parsed.error.issues.map((issue) => issue.message);
@@ -89,7 +99,7 @@ async function login(req, res, next) {
 
     const usuario = await usuariosRepository.findByEmail(email);
     if (!usuario) {
-      return res.status(401).json({ message: "Credenciais inválidas." });
+      return res.status(400).json({ message: "Usuario nao encontrado." });
     }
 
     const senhaMatch = await bcrypt.compare(senha, usuario.senha);
@@ -177,9 +187,6 @@ async function findMe(req, res, next) {
 async function deleteUser(req, res, next) {
   try {
     const id = req.params.id;
-    if (isNaN(id)) {
-      return res.status(400).json({ message: "ID inválido." });
-    }
     const deleted = await usuariosRepository.deleteUser(id);
     if (!deleted) {
       return res.status(404).json({ message: "Usuario nao encontrado." });
@@ -192,6 +199,7 @@ async function deleteUser(req, res, next) {
 
 async function logout(req, res, next) {
   try {
+    // Se você salvar refresh tokens no banco, pode removê-lo aqui
     return res.status(200).json({ message: "Logout realizado com sucesso." });
   } catch (error) {
     next(error);
