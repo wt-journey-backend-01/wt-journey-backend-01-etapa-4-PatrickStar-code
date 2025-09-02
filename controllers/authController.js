@@ -66,7 +66,7 @@ async function cadastro(req, res, next) {
 
     const usuario = await usuariosRepository.findByEmail(email);
     if (usuario) {
-      return res.status(409).json({ message: "Email já cadastrado." });
+      return res.status(400).json({ message: "Email já cadastrado." });
     }
 
     const senhaHash = await bcrypt.hash(senha, 8);
