@@ -2,14 +2,16 @@
 
 # 🧪 Relatório de Avaliação – Journey Levty Etapa 1 - PatrickStar-code
 
-**Data:** 02/09/2025 17:40
+**Data:** 02/09/2025 17:52
 
-**Nota Final:** `68.41/100`
+**Nota Final:** `66.66/100`
 **Status:** ❌ Reprovado
 
 ---
 ## ✅ Requisitos Obrigatórios
-- Foram encontrados `22` problemas nos requisitos obrigatórios. Veja abaixo os testes que falharam:
+- Foram encontrados `23` problemas nos requisitos obrigatórios. Veja abaixo os testes que falharam:
+  - ⚠️ **Falhou no teste**: `USERS: Recebe erro 400 ao tentar criar um usuário com e-mail já em uso`
+    - **Melhoria sugerida**: Nenhuma sugestão de melhoria disponível.
   - ⚠️ **Falhou no teste**: `AGENTS: Cria agentes corretamente com status code 201 e os dados inalterados do agente mais seu ID`
     - **Melhoria sugerida**: Nenhuma sugestão de melhoria disponível.
   - ⚠️ **Falhou no teste**: `AGENTS: Lista todos os agente corretamente com status code 200 e todos os dados de cada agente listados corretamente`
