@@ -41,7 +41,6 @@ function authMiddleware(req, res, next) {
         );
       }
 
-      // Injeta o payload do token no request
       req.user = user;
       next();
     });
